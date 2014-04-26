@@ -42,6 +42,8 @@ static const int64 MAX_MINT_PROOF_OF_STAKE_START	= 0.001  * COIN;		    // 0.1% d
 static const int64 MAX_MINT_PROOF_OF_STAKE_END		= 0.0001 * COIN;            // 0.01% daily interest after 5 years
 static const int64 MIN_TXOUT_AMOUNT = MIN_TX_FEE;
 
+static const int HASH_ALGO_SWITCH_BLOCK = 6000;		// hardfork to fix the hash algorithm
+
 inline bool MoneyRange(int64 nValue) { return (nValue >= 0 && nValue <= MAX_MONEY); }
 
 // Threshold for nLockTime: below this value it is interpreted as block number, otherwise as UNIX timestamp.
