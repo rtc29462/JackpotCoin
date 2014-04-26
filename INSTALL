@@ -1,0 +1,9 @@
+Building JackpotCoin
+
+See doc/readme-qt.rst for instructions on building JackpotCoin QT,
+the intended-for-end-users, nice-graphical-interface, reference
+implementation of JackpotCoin.
+
+See doc/build-*.txt for instructions on building JackpotCoind,
+the intended-for-services, no-graphical-interface, reference
+implementation of JackpotCoin.
