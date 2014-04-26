@@ -9,7 +9,7 @@ INCLUDEPATHS= \
  -I"/c/deps/boost_1_53_0" \
  -I"/c/deps/db-4.8.30.NC/build_unix" \
  -I"/c/deps/openssl-1.0.1g/include" \
- -I"/e"
+ -I"/c"
 
 LIBPATHS= \
  -L"/c/deps/boost_1_53_0/stage/lib" \
