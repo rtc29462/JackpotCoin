@@ -2241,17 +2241,7 @@ bool CBlock::AcceptBlock()
     CBlockIndex* pindexPrev = (*mi).second;
     int nHeight = pindexPrev->nHeight+1;
 
-
-
-////////////////////////////////////////////////////////////////////////////////
-//
-// Check Point for the new block
-//
-// NEED TO VERIFY
-//
-////////////////////////////////////////////////////////////////////////////////
-
-    if (nHeight <= TEMP_CHECK_POINT) {
+    if (nHeight <= HASH_ALGO_SWITCH_BLOCK) {
        nRoundMask = 7;
     }
     else {
@@ -4365,16 +4355,7 @@ CBlock* CreateNewBlock(CWallet* pwallet, bool fProofOfStake)
             pblock->UpdateTime(pindexPrev);
         pblock->nNonce			= 0;
 
-
-////////////////////////////////////////////////////////////////////////////////
-//
-// Check Point for the new block
-//
-// NEED TO VERIFY
-//
-////////////////////////////////////////////////////////////////////////////////
-
-        if (pindexPrev->nHeight < TEMP_CHECK_POINT) {
+        if (pindexPrev->nHeight < HASH_ALGO_SWITCH_BLOCK) {
            pblock->nRoundMask    = 7;
         }
         else {
