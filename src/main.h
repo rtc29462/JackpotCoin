@@ -26,8 +26,6 @@ class CInv;
 class CRequestTracker;
 class CNode;
 
-static const unsigned int DEFAULT_ROUND_MASK = 0x00000007;
-
 static const unsigned int MAX_BLOCK_SIZE = 1000000;
 static const unsigned int MAX_BLOCK_SIZE_GEN = MAX_BLOCK_SIZE/2;
 static const unsigned int MAX_BLOCK_SIGOPS = MAX_BLOCK_SIZE/50;
@@ -898,8 +896,8 @@ public:
         nTime = 0;
         nBits = 0;
         nNonce = 0;
-		nSuperBlock = 0;
-        nRoundMask = DEFAULT_ROUND_MASK;
+		    nSuperBlock = 0;
+        nRoundMask = 0;
         vtx.clear();
         vchBlockSig.clear();
         vMerkleTree.clear();

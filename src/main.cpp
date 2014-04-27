@@ -19,6 +19,8 @@
 using namespace std;
 using namespace boost;
 
+unsigned int TEMP_CHECK_POINT = 10;
+
 //
 // Global state
 //
@@ -40,20 +42,20 @@ static CBigNum bnProofOfStakeLimit(~uint256(0) >> 20);
 static CBigNum bnProofOfWorkLimitTestNet(~uint256(0) >> 20);
 static CBigNum bnProofOfStakeLimitTestNet(~uint256(0) >> 20);
 
-// unsigned int nStakeMinAge = 60 * 60 * 8;		        // minimum age for coin age: 8h for testing
+// unsigned int nStakeMinAge = 60 * 60 * 1;		        // minimum age for coin age: 1h for testing
 unsigned int nStakeMinAge = 60 * 60 * 24 * 1;			// minimum age for coin age: 1d
 unsigned int nStakeMaxAge = 60 * 60 * 24 * 30;	        // stake age of full weight: 30d
 unsigned int nStakeTargetSpacing = 20;			        // 20 sec block spacing for PoS
 unsigned int nWorkTargetSpacing = 120;                  // 120 sec block spacing for PoW
 
-int64 nChainStartTime = 1398357357;                     
+int64 nChainStartTime = 1398357357;
 int nCoinbaseMaturity = 50;
 CBlockIndex* pindexGenesisBlock = NULL;
 int nBestHeight = -1;
 CBigNum bnBestChainTrust = 0;
 CBigNum bnBestInvalidTrust = 0;
 uint256 hashBestChain = 0;
-CBlockIndex* pindexBest = NULL; 
+CBlockIndex* pindexBest = NULL;
 int64 nTimeBestReceived = 0;
 
 CMedianFilter<int> cPeerBlockCounts(5, 0); // Amount of blocks that other nodes claim to have
@@ -1043,19 +1045,19 @@ int64 GetProofOfWorkBlockBonusRewardFactor(CBlockIndex* pindex)
 	int random = generateMTRandom(seed, 25200);
 
 	double numofdays = (double)delta / (double)POW_BLOCKS_PER_DAY;
-	if(numofdays > SUPER_BONUS_MAX_DAY)	
+	if(numofdays > SUPER_BONUS_MAX_DAY)
 	{
 		// increase the possibility
 		int dd = 5 * (delta - SUPER_BONUS_MAX_DAY * POW_BLOCKS_PER_DAY);
-		if(dd < 0) 
+		if(dd < 0)
 			dd = 0;
 
 		lowerLimit -= dd;
-		if(lowerLimit < 0) 
+		if(lowerLimit < 0)
 			lowerLimit = 0;
 
 		upperLimit += dd;
-		if(upperLimit > 25200) 
+		if(upperLimit > 25200)
 			upperLimit = 25200;
 	}
 
@@ -2231,10 +2233,6 @@ bool CBlock::CheckBlock(bool fCheckPOW, bool fCheckMerkleRoot) const
 
 bool CBlock::AcceptBlock()
 {
-    // Check for duplicate
-    uint256 hash = GetHash();
-    if (mapBlockIndex.count(hash))
-        return error("AcceptBlock() : block already in mapBlockIndex");
 
     // Get prev block index
     map<uint256, CBlockIndex*>::iterator mi = mapBlockIndex.find(hashPrevBlock);
@@ -2242,6 +2240,28 @@ bool CBlock::AcceptBlock()
         return DoS(10, error("AcceptBlock() : prev block not found"));
     CBlockIndex* pindexPrev = (*mi).second;
     int nHeight = pindexPrev->nHeight+1;
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// Check Point for the new block
+//
+// NEED TO VERIFY
+//
+////////////////////////////////////////////////////////////////////////////////
+
+    if (nHeight <= TEMP_CHECK_POINT) {
+       nRoundMask = 7;
+    }
+    else {
+       nRoundMask = 8;
+    }
+
+    // Check for duplicate
+    uint256 hash = GetHash();
+    if (mapBlockIndex.count(hash))
+        return error("AcceptBlock() : block already in mapBlockIndex");
 
     // Check proof-of-work or proof-of-stake
     if (nBits != GetNextTargetRequired(pindexPrev, IsProofOfStake()))
@@ -2725,7 +2745,7 @@ bool LoadBlockIndex(bool fAllowNew)
         block.nBits				= bnProofOfWorkLimit.GetCompact();
         block.nNonce			= 12344321;
 		block.nSuperBlock		= 0;
-        block.nRoundMask        = DEFAULT_ROUND_MASK;
+        block.nRoundMask        = 7;                                            // Default for Genesis Block
 
         //// debug print
          if (fDebug) {
@@ -4344,7 +4364,23 @@ CBlock* CreateNewBlock(CWallet* pwallet, bool fProofOfStake)
         if (pblock->IsProofOfWork())
             pblock->UpdateTime(pindexPrev);
         pblock->nNonce			= 0;
-        pblock->nRoundMask       = pindexPrev->nRoundMask;
+
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// Check Point for the new block
+//
+// NEED TO VERIFY
+//
+////////////////////////////////////////////////////////////////////////////////
+
+        if (pindexPrev->nHeight < TEMP_CHECK_POINT) {
+           pblock->nRoundMask    = 7;
+        }
+        else {
+           pblock->nRoundMask    = 8;                                           // New Round Mask
+        }
+
     }
 
     return pblock.release();
