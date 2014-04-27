@@ -19,8 +19,6 @@
 using namespace std;
 using namespace boost;
 
-unsigned int TEMP_CHECK_POINT = 10;
-
 //
 // Global state
 //
