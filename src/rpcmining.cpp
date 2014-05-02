@@ -90,7 +90,7 @@ Value getcurrentjackpot(const Array& params, bool fHelp)
         throw runtime_error(
             "getcurrentjackpot\n"
             "Returns the current jackpot size.");
-	
+
 	CBlockIndex* pblockindex = FindBlockByHeight((int)nBestHeight);
     return (boost::int64_t)GetCurrentJackpotSize(pblockindex);
 }
@@ -98,6 +98,7 @@ Value getcurrentjackpot(const Array& params, bool fHelp)
 
 // Litecoin: Return average network hashes per second based on last number of blocks.
 Value GetNetworkHashPS(int lookup) {
+
     if (pindexBest == NULL)
         return 0;
 
@@ -109,12 +110,55 @@ Value GetNetworkHashPS(int lookup) {
     if (lookup > pindexBest->nHeight)
         lookup = pindexBest->nHeight;
 
-    CBlockIndex* pindexPrev = pindexBest;
-    for (int i = 0; i < lookup; i++)
+    //
+    // Find Last PoW
+    //
+    CBlockIndex* pindexLast = pindexBest;
+    double       timeDiff1 = 0;
+    double       timeDiff2 = 0;
+    double       count = 0;
+    for (int i = 0; i < lookup; i++) {
+        if (pindexLast->IsProofOfWork) {
+           timeDiff1 = timeDiff2 = pindexLast->GetBlockTime();
+           break;
+        }
+        if (pindexLast->pprev == NULL) {
+           return (0);
+        }
+        pindexLast = pindexLast->pprev;
+    }
+
+    //
+    // Counting Last PoW with Lookup
+    //
+    for (int i = pindexLast->nHeight; i > 1; i++) {
+        if (pindexLast->pprev == NULL) {
+           break;
+        }
+        pindexLast = pindexLast->pprev;
+        if (pindexLast->IsProofOfWork()) {
+           count += 1;
+           timeDiff2 = pindexLast->GetBlockTime();
+           if (count >= lookup) break;
+        }
+    }
+
+    double timeDiff = timeDiff1 - timeDiff2;
+    if (timeDiff < 1) {
+       return (0);
+    }
+    double timePerBlock = timeDiff / count;
+
+    /*
+    CBlockIndex* pindexLast = pindexBest;
+    for (int i = 0; i < lookup; i++) {
+        if (
         pindexPrev = pindexPrev->pprev;
+    }
 
     double timeDiff = pindexBest->GetBlockTime() - pindexPrev->GetBlockTime();
     double timePerBlock = timeDiff / lookup;
+    */
 
     return (boost::int64_t)(((double)GetDifficulty() * pow(2.0, 32)) / timePerBlock);
 }
