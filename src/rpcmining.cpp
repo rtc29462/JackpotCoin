@@ -118,7 +118,7 @@ Value GetNetworkHashPS(int lookup) {
     double       timeDiff2 = 0;
     double       count = 0;
     for (int i = 0; i < lookup; i++) {
-        if (pindexLast->IsProofOfWork) {
+        if (pindexLast->IsProofOfWork()) {
            timeDiff1 = timeDiff2 = pindexLast->GetBlockTime();
            break;
         }
