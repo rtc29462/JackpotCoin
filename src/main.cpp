@@ -40,7 +40,6 @@ static CBigNum bnProofOfStakeLimit(~uint256(0) >> 20);
 static CBigNum bnProofOfWorkLimitTestNet(~uint256(0) >> 20);
 static CBigNum bnProofOfStakeLimitTestNet(~uint256(0) >> 20);
 
-// unsigned int nStakeMinAge = 60 * 60 * 1;		        // minimum age for coin age: 1h for testing
 unsigned int nStakeMinAge = 60 * 60 * 24 * 1;			// minimum age for coin age: 1d
 unsigned int nStakeMaxAge = 60 * 60 * 24 * 30;	        // stake age of full weight: 30d
 unsigned int nStakeTargetSpacing = 20;			        // 20 sec block spacing for PoS
@@ -504,12 +503,11 @@ bool CTransaction::CheckTransaction() const
 
 
 int64 CTransaction::GetMinFee(unsigned int nBlockSize, bool fAllowFree,
-                              enum GetMinFee_mode mode) const
+                              enum GetMinFee_mode mode, unsigned int nBytes) const
 {
     // Base fee is either MIN_TX_FEE or MIN_RELAY_TX_FEE
     int64 nBaseFee = (mode == GMF_RELAY) ? MIN_RELAY_TX_FEE : MIN_TX_FEE;
 
-    unsigned int nBytes = ::GetSerializeSize(*this, SER_NETWORK, PROTOCOL_VERSION);
     unsigned int nNewBlockSize = nBlockSize + nBytes;
     int64 nMinFee = (1 + (int64)nBytes / 1000) * nBaseFee;
 
@@ -625,7 +623,7 @@ bool CTxMemPool::accept(CTxDB& txdb, CTransaction &tx, bool fCheckInputs,
         unsigned int nSize = ::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION);
 
         // Don't accept it if it can't get into a block
-        int64 txMinFee = tx.GetMinFee(1000, false, GMF_RELAY);
+        int64 txMinFee = tx.GetMinFee(1000, false, GMF_RELAY, nSize);
         if (nFees < txMinFee)
             return error("CTxMemPool::accept() : not enough fees %s, %"PRI64d" < %"PRI64d,
                          hash.ToString().c_str(),
@@ -1004,7 +1002,7 @@ int64 GetProofOfWorkReward(int nHeight, int64 nFees, const CBlockIndex* pindex)
 
 	int nReduceFactor = nPoWHeight / 5040;
 
-	if(nReduceFactor > 109)		// this is 5 / (1 - 2*log3)
+	if(nReduceFactor > 109)		
 		nSubsidy = nMinSubsidy;
 	else
 	{
@@ -1043,6 +1041,7 @@ int64 GetProofOfWorkBlockBonusRewardFactor(CBlockIndex* pindex)
 	int random = generateMTRandom(seed, 25200);
 
 	double numofdays = (double)delta / (double)POW_BLOCKS_PER_DAY;
+
 	if(numofdays > SUPER_BONUS_MAX_DAY)
 	{
 		// increase the possibility
@@ -1059,9 +1058,15 @@ int64 GetProofOfWorkBlockBonusRewardFactor(CBlockIndex* pindex)
 			upperLimit = 25200;
 	}
 
-	if(random > lowerLimit && random < upperLimit)	// Real chance should be 1 in 3.5 days or 1/2520
-//	if(random > 15000 && random < 20001)	// 5000/25200 testing, about 20%
+	
+	// printf(">> height = %d, random = %d, numberofday= %f, upper = %d, lower = %d\n", pindex->nHeight, random, numofdays,
+	//		upperLimit, lowerLimit);
+
+	if(random > lowerLimit && random < upperLimit)	// 1 in 3.5 days on average
 	{
+		printf(">>> Found Jackpot!! height = %d, random = %d, numberofday= %f, upper = %d, lower = %d\n", pindex->nHeight, random, numofdays,
+			upperLimit, lowerLimit);
+
 		if(numofdays > SUPER_BONUS_CAP_DAY)
 			numofdays = SUPER_BONUS_CAP_DAY;
 
@@ -1100,7 +1105,7 @@ int64 GetProofOfStakeReward(int64 nCoinAge, unsigned int nBits, unsigned int nTi
     int64 nRewardCoinDay = MAX_MINT_PROOF_OF_STAKE_END;
 	int nPoSHeight = GetPosHeight(pindex);
 
-	if(nPoSHeight < 7884000)	// 5 years
+	if(nPoSHeight < 7884000)	
 	{
 		int nPosStage = nPoSHeight / 388800;
 		nRewardCoinDay = MAX_MINT_PROOF_OF_STAKE_START -
