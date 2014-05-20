@@ -1058,10 +1058,9 @@ int64 GetProofOfWorkBlockBonusRewardFactor(CBlockIndex* pindex)
 			upperLimit = 25200;
 	}
 
-	
-	// printf(">> height = %d, random = %d, numberofday= %f, upper = %d, lower = %d\n", pindex->nHeight, random, numofdays,
-	//		upperLimit, lowerLimit);
-
+    printf(">> height = %d, random = %d, numberofday= %f, upper = %d, lower = %d\n", pindex->nHeight, random, numofdays, 
+       upperLimit, lowerLimit);
+       
 	if(random > lowerLimit && random < upperLimit)	// 1 in 3.5 days on average
 	{
 		printf(">>> Found Jackpot!! height = %d, random = %d, numberofday= %f, upper = %d, lower = %d\n", pindex->nHeight, random, numofdays,
@@ -4490,7 +4489,7 @@ static int nLimitProcessors = -1;
 
 void BitcoinMiner(CWallet *pwallet, bool fProofOfStake)
 {
-
+ 
     printf("CPU Miner started for proof-of-%s\n", fProofOfStake? "stake" : "work");
     SetThreadPriority(THREAD_PRIORITY_LOWEST);
 
@@ -4534,8 +4533,13 @@ void BitcoinMiner(CWallet *pwallet, bool fProofOfStake)
 
         if (fProofOfStake)
         {
+            if (GetBoolArg("-nostake")) 
+            {
+               // Temporary Stop Stake Mining
+               Sleep(9000);
+            }
             // ppcoin: if proof-of-stake block found then process block
-            if (pblock->IsProofOfStake())
+            else if (pblock->IsProofOfStake())
             {
                 if (!pblock->SignBlock(*pwalletMain))
                 {
@@ -4548,7 +4552,7 @@ void BitcoinMiner(CWallet *pwallet, bool fProofOfStake)
                 CheckWork(pblock.get(), *pwalletMain, reservekey);
                 SetThreadPriority(THREAD_PRIORITY_LOWEST);
             }
-            Sleep(500);
+            Sleep(1000);
             continue;
         }
 

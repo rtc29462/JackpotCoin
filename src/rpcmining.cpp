@@ -7,6 +7,7 @@
 #include "db.h"
 #include "init.h"
 #include "bitcoinrpc.h"
+#include "util.h"
 
 using namespace json_spirit;
 using namespace std;
@@ -48,6 +49,29 @@ Value setgenerate(const Array& params, bool fHelp)
 }
 
 
+Value getnostake(const Array& params, bool fHelp)
+{
+    if (fHelp || params.size() != 0)
+        throw runtime_error(
+            "getnostake\n"
+            "Returns true or false.");
+
+    return GetBoolArg("-nostake");
+}
+
+
+Value setnostake(const Array& params, bool fHelp)
+{
+    if (fHelp || params.size() < 1 || params.size() > 1)
+        throw runtime_error(
+            "setnostake <bool>\n"
+            "<bool> is true or false, to turn stake off or on.\n");
+    bool fnostake = params[0].get_bool();
+    mapArgs["-nostake"] = (fnostake ? "1" : "0");
+    return Value::null;
+}
+
+
 Value gethashespersec(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
@@ -75,6 +99,7 @@ Value getmininginfo(const Array& params, bool fHelp)
     obj.push_back(Pair("difficulty",    (double)GetDifficulty()));
     obj.push_back(Pair("errors",        GetWarnings("statusbar")));
     obj.push_back(Pair("generate",      GetBoolArg("-gen")));
+    obj.push_back(Pair("nostake",       GetBoolArg("-nostake")));
     obj.push_back(Pair("genproclimit",  (int)GetArg("-genproclimit", -1)));
     obj.push_back(Pair("hashespersec",  gethashespersec(params, false)));
 	obj.push_back(Pair("networkhashps", getnetworkhashps(params, false)));
