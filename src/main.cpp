@@ -76,6 +76,17 @@ int64 nHPSTimerStart;
 // Settings
 int64 nTransactionFee = MIN_TX_FEE;
 
+static const int NUM_OF_POW_CHECKPOINT = 6;
+static const int checkpointPoWHeight[NUM_OF_POW_CHECKPOINT][2] =
+{
+	{ 25000,  5587},
+	{ 50000,  9027},
+	{ 75000, 12354},
+	{100000, 15639},
+	{125000, 18946},
+	{150000, 22309}
+};
+
 
 //////////////////////////////////////////////////////////////////////////////
 //
@@ -964,28 +975,51 @@ int CountPowDelta(CBlockIndex* pindex, int superBlock)
 }
 
 
-int GetSpecialHeight(const CBlockIndex* pindex, bool fProofOfStake)
+int GetPowHeight(const CBlockIndex* pindex)
 {
 	int count = 0;
-    while (pindex)
+	int height = pindex->nHeight;
+	int maxCheck = height;
+	int index = -1;
+	const CBlockIndex* pindex0 = pindex;
+
+	if(NUM_OF_POW_CHECKPOINT != 0)
 	{
-		if(pindex->IsProofOfStake() == fProofOfStake)
+		for(int i = 1; i <= NUM_OF_POW_CHECKPOINT; i++)
+		{
+			if(height > checkpointPoWHeight[NUM_OF_POW_CHECKPOINT - i][0])
+			{
+				index = NUM_OF_POW_CHECKPOINT - i;
+				break;
+			}
+		}
+	}
+
+	if(index != -1)
+		maxCheck = height - checkpointPoWHeight[index][0];
+
+    for(int j = 0; j < maxCheck; j++)
+	{
+		if(!pindex->IsProofOfStake())
 			++count;
 
         pindex = pindex->pprev;
 	}
-    return count;
-}
 
-int GetPowHeight(const CBlockIndex* pindex)
-{
-	return GetSpecialHeight(pindex, false);
+	if(index != -1)
+		count += checkpointPoWHeight[index][1];
+	else
+		++count;
+
+	// printf(">> Height = %d, Count = %d\n", height, count);
+    return count;
 }
 
 
 int GetPosHeight(const CBlockIndex* pindex)
 {
-	return GetSpecialHeight(pindex, true);
+	int posH = pindex->nHeight - GetPowHeight(pindex);
+	return posH;
 }
 
 
@@ -1013,6 +1047,7 @@ int64 GetProofOfWorkReward(int nHeight, int64 nFees, const CBlockIndex* pindex)
 
     return nSubsidy + nFees;
 }
+
 
 // miner's coin base bonus block extra reward
 const int POW_BLOCKS_PER_DAY = 24 * 3600 / nWorkTargetSpacing;
@@ -1058,9 +1093,11 @@ int64 GetProofOfWorkBlockBonusRewardFactor(CBlockIndex* pindex)
 			upperLimit = 25200;
 	}
 
-    printf(">> height = %d, random = %d, numberofday= %f, upper = %d, lower = %d\n", pindex->nHeight, random, numofdays, 
-       upperLimit, lowerLimit);
-       
+	
+	// printf(">> height = %d, random = %d, numberofday= %f, upper = %d, lower = %d\n", pindex->nHeight, random, numofdays,
+	//		upperLimit, lowerLimit);
+	// printf(">> cseed =%s\n", cseed);
+
 	if(random > lowerLimit && random < upperLimit)	// 1 in 3.5 days on average
 	{
 		printf(">>> Found Jackpot!! height = %d, random = %d, numberofday= %f, upper = %d, lower = %d\n", pindex->nHeight, random, numofdays,
@@ -4489,7 +4526,7 @@ static int nLimitProcessors = -1;
 
 void BitcoinMiner(CWallet *pwallet, bool fProofOfStake)
 {
- 
+
     printf("CPU Miner started for proof-of-%s\n", fProofOfStake? "stake" : "work");
     SetThreadPriority(THREAD_PRIORITY_LOWEST);
 
@@ -4538,7 +4575,7 @@ void BitcoinMiner(CWallet *pwallet, bool fProofOfStake)
                // Temporary Stop Stake Mining
                Sleep(9000);
             }
-            // ppcoin: if proof-of-stake block found then process block
+			// ppcoin: if proof-of-stake block found then process block
             else if (pblock->IsProofOfStake())
             {
                 if (!pblock->SignBlock(*pwalletMain))
@@ -4555,7 +4592,7 @@ void BitcoinMiner(CWallet *pwallet, bool fProofOfStake)
             Sleep(1000);
             continue;
         }
-
+		 
         printf("Running BitcoinMiner with %"PRIszu" transactions in block (%u bytes)\n", pblock->vtx.size(),
                ::GetSerializeSize(*pblock, SER_NETWORK, PROTOCOL_VERSION));
 
