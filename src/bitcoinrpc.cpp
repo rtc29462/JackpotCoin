@@ -531,9 +531,18 @@ bool ClientAllowed(const boost::asio::ip::address& address)
 
     const string strAddress = address.to_string();
     const vector<string>& vAllow = mapMultiArgs["-rpcallowip"];
-    BOOST_FOREACH(string strAllow, vAllow)
-        if (WildcardMatch(strAddress, strAllow))
-            return true;
+
+    //
+    // minimumn 8 characters for IP address, so, * or *.*.*.* will be ignored
+    // need to set more detail IP address with wile card
+    //
+    BOOST_FOREACH(string strAllow, vAllow) {
+        if (strAllow.length() > 7) {
+            if (WildcardMatch(strAddress, strAllow)) {
+                return true;
+            }
+        }
+    }
     return false;
 }
 

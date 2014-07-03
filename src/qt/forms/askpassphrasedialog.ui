@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>598</width>
-    <height>198</height>
+    <height>180</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -26,16 +26,6 @@
    <string>Passphrase Dialog</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
-   <item>
-    <widget class="QLabel" name="warningLabel">
-     <property name="textFormat">
-      <enum>Qt::RichText</enum>
-     </property>
-     <property name="wordWrap">
-      <bool>true</bool>
-     </property>
-    </widget>
-   </item>
    <item>
     <layout class="QFormLayout" name="formLayout">
      <property name="fieldGrowthPolicy">
@@ -99,7 +89,27 @@
        </property>
       </widget>
      </item>
+     <item row="3" column="0">
+      <widget class="QCheckBox" name="stakingCheckBox">
+       <property name="accessibleDescription">
+        <string extracomment="Check this option if want to ulock wallet for PoS mining only"/>
+       </property>
+       <property name="text">
+        <string>Unlock for PoS mining only</string>
+       </property>
+      </widget>
+     </item>
     </layout>
+   </item>
+   <item>
+    <widget class="QLabel" name="warningLabel">
+     <property name="textFormat">
+      <enum>Qt::RichText</enum>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
    </item>
    <item>
     <widget class="QDialogButtonBox" name="buttonBox">

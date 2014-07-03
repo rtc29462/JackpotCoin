@@ -17,6 +17,7 @@ TransactionFilterProxy::TransactionFilterProxy(QObject *parent) :
     addrPrefix(),
     typeFilter(ALL_TYPES),
     minAmount(0),
+    minConfirm(1),
     limitRows(-1)
 {
 }
@@ -30,7 +31,10 @@ bool TransactionFilterProxy::filterAcceptsRow(int sourceRow, const QModelIndex &
     QString address = index.data(TransactionTableModel::AddressRole).toString();
     QString label = index.data(TransactionTableModel::LabelRole).toString();
     qint64 amount = llabs(index.data(TransactionTableModel::AmountRole).toLongLong());
+    qint64 confirms = index.data(TransactionTableModel::ConfirmedDepth).toLongLong();
 
+    if (confirms < minConfirm)
+        return false;
     if(!(TYPE(type) & typeFilter))
         return false;
     if(datetime < dateFrom || datetime > dateTo)
@@ -59,6 +63,12 @@ void TransactionFilterProxy::setAddressPrefix(const QString &addrPrefix)
 void TransactionFilterProxy::setTypeFilter(quint32 modes)
 {
     this->typeFilter = modes;
+    invalidateFilter();
+}
+
+void TransactionFilterProxy::setMinConfirm(qint64 minimum)
+{
+    this->minConfirm = minimum;
     invalidateFilter();
 }
 

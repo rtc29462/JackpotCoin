@@ -28,6 +28,7 @@ public:
 
 public slots:
     void setBalance(qint64 balance, qint64 stake, qint64 unconfirmedBalance, qint64 immatureBalance);
+    void setJackpot();
     void setNumTransactions(int count);
 	void unlockWallet();
 
@@ -41,6 +42,7 @@ private:
     qint64 currentStake;
     qint64 currentUnconfirmedBalance;
     qint64 currentImmatureBalance;
+    qint64 currentJackpot;
 
     TxViewDelegate *txdelegate;
     TransactionFilterProxy *filter;

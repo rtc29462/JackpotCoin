@@ -16,6 +16,8 @@
 #define DECORATION_SIZE 64
 #define NUM_ITEMS 6
 
+extern int nJackpotValue;
+
 class TxViewDelegate : public QAbstractItemDelegate
 {
     Q_OBJECT
@@ -97,6 +99,7 @@ OverviewPage::OverviewPage(QWidget *parent) :
     currentStake(0),
     currentUnconfirmedBalance(-1),
     currentImmatureBalance(-1),
+    currentJackpot(0),
     txdelegate(new TxViewDelegate()),
     filter(0)
 {
@@ -129,6 +132,11 @@ OverviewPage::~OverviewPage()
     delete ui;
 }
 
+void OverviewPage::setJackpot() {
+     currentJackpot = (qint64) nJackpotValue;
+     ui->labelCurrentJackpot->setText(QString::number(nJackpotValue) + QString(" JPC"));
+}
+
 void OverviewPage::setBalance(qint64 balance, qint64 stake, qint64 unconfirmedBalance, qint64 immatureBalance)
 {
     int unit = model->getOptionsModel()->getDisplayUnit();
@@ -136,6 +144,7 @@ void OverviewPage::setBalance(qint64 balance, qint64 stake, qint64 unconfirmedBa
     currentStake = stake;
     currentUnconfirmedBalance = unconfirmedBalance;
     currentImmatureBalance = immatureBalance;
+
     ui->labelBalance->setText(BitcoinUnits::formatWithUnit(unit, balance));
     ui->labelStake->setText(BitcoinUnits::formatWithUnit(unit, stake));
     ui->labelUnconfirmed->setText(BitcoinUnits::formatWithUnit(unit, unconfirmedBalance));
@@ -146,6 +155,9 @@ void OverviewPage::setBalance(qint64 balance, qint64 stake, qint64 unconfirmedBa
     bool showImmature = immatureBalance != 0;
     ui->labelImmature->setVisible(showImmature);
     ui->labelImmatureText->setVisible(showImmature);
+
+    //
+    setJackpot();
 }
 
 void OverviewPage::setNumTransactions(int count)
@@ -171,6 +183,8 @@ void OverviewPage::unlockWallet()
     }
 }
 
+
+
 void OverviewPage::setModel(WalletModel *model)
 {
     this->model = model;
@@ -182,7 +196,7 @@ void OverviewPage::setModel(WalletModel *model)
         filter->setLimit(NUM_ITEMS);
         filter->setDynamicSortFilter(true);
         filter->setSortRole(Qt::EditRole);
-        filter->sort(TransactionTableModel::Status, Qt::DescendingOrder);
+        filter->sort(TransactionTableModel::Date, Qt::DescendingOrder);
 
         ui->listTransactions->setModel(filter);
         ui->listTransactions->setModelColumn(TransactionTableModel::ToAddress);
@@ -195,6 +209,9 @@ void OverviewPage::setModel(WalletModel *model)
         connect(model, SIGNAL(numTransactionsChanged(int)), this, SLOT(setNumTransactions(int)));
 
         connect(model->getOptionsModel(), SIGNAL(displayUnitChanged(int)), this, SLOT(updateDisplayUnit()));
+
+        setJackpot();
+        connect(model, SIGNAL(nBestHeightChanged(int)), this, SLOT(setJackpot()));
 
         // Unlock wallet button
         WalletModel::EncryptionStatus status = model->getEncryptionStatus();

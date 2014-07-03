@@ -8,14 +8,12 @@ USE_IPV6:=0
 INCLUDEPATHS= \
  -I"/c/deps/boost_1_53_0" \
  -I"/c/deps/db-4.8.30.NC/build_unix" \
- -I"/c/deps/openssl-1.0.1g/include" \
- -I"/c"
+ -I"/c/deps/openssl-1.0.1g/include"
 
 LIBPATHS= \
  -L"/c/deps/boost_1_53_0/stage/lib" \
  -L"/c/deps/db-4.8.30.NC/build_unix" \
- -L"/c/deps/openssl-1.0.1g" \
- -L"/c/deps/miniupnpc"
+ -L"/c/deps/openssl-1.0.1g"
 
 LIBS= \
  -l boost_system-mgw48-mt-s-1_53 \
@@ -29,7 +27,7 @@ LIBS= \
 DEFS=-DWIN32 -D_WINDOWS -DBOOST_THREAD_USE_LIB -DBOOST_SPIRIT_THREADSAFE -D__NO_SYSTEM_INCLUDES
 DEBUGFLAGS=-g
 CFLAGS=-mthreads -O2 -msse2 -w -Wall -Wextra -Wformat -Wformat-security -Wno-unused-parameter -fpermissive $(DEBUGFLAGS) $(DEFS) $(INCLUDEPATHS)
-LDFLAGS=-Wl,--dynamicbase -Wl,--nxcompat
+LDFLAGS=-Wl,--dynamicbase -Wl,--nxcompat -static
 
 TESTDEFS = -DTEST_DATA_DIR=$(abspath test/data)
 

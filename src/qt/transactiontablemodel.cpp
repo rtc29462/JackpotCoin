@@ -573,6 +573,8 @@ QVariant TransactionTableModel::data(const QModelIndex &index, int role) const
             return addressColor(rec);
         }
         break;
+    case ConfirmedDepth:
+        return rec->status.depth;
     case TypeRole:
         return rec->type;
     case DateRole:

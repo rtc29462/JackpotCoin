@@ -166,6 +166,9 @@ signals:
     // Signal that balance in wallet changed
     void balanceChanged(qint64 balance, qint64 stake, qint64 unconfirmedBalance, qint64 immatureBalance);
 
+    // Block Height has changed
+    void nBestHeightChanged(int nBestHeight);
+
     // Number of transactions in wallet changed
     void numTransactionsChanged(int count);
 

@@ -46,6 +46,8 @@ public:
         TxIDRole,
         /** Is transaction confirmed? */
         ConfirmedRole,
+        /** Depth of confirm */
+        ConfirmedDepth,
         /** Formatted amount, without brackets when unconfirmed */
         FormattedAmountRole
     };
@@ -55,6 +57,7 @@ public:
     QVariant data(const QModelIndex &index, int role) const;
     QVariant headerData(int section, Qt::Orientation orientation, int role) const;
     QModelIndex index(int row, int column, const QModelIndex & parent = QModelIndex()) const;
+
 private:
     CWallet* wallet;
     WalletModel *walletModel;

@@ -1,4 +1,4 @@
-// Copyright (c) 2009-2010 Satoshi Nakamoto
+﻿// Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2012 The Bitcoin developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -86,6 +86,11 @@ static const int checkpointPoWHeight[NUM_OF_POW_CHECKPOINT][2] =
 	{125000, 18946},
 	{150000, 22309}
 };
+
+//
+// for Jackpot infomation
+//
+
 
 
 //////////////////////////////////////////////////////////////////////////////
@@ -1025,6 +1030,7 @@ int GetPosHeight(const CBlockIndex* pindex)
 
 static const int64 nMinSubsidy = 1 * COIN;
 
+
 // miner's coin base reward based on nBits
 int64 GetProofOfWorkReward(int nHeight, int64 nFees, const CBlockIndex* pindex)
 {
@@ -1048,6 +1054,7 @@ int64 GetProofOfWorkReward(int nHeight, int64 nFees, const CBlockIndex* pindex)
     return nSubsidy + nFees;
 }
 
+int nJackpotValue = 0;
 
 // miner's coin base bonus block extra reward
 const int POW_BLOCKS_PER_DAY = 24 * 3600 / nWorkTargetSpacing;
@@ -1077,40 +1084,44 @@ int64 GetProofOfWorkBlockBonusRewardFactor(CBlockIndex* pindex)
 
 	double numofdays = (double)delta / (double)POW_BLOCKS_PER_DAY;
 
-	if(numofdays > SUPER_BONUS_MAX_DAY)
-	{
-		// increase the possibility
-		int dd = 5 * (delta - SUPER_BONUS_MAX_DAY * POW_BLOCKS_PER_DAY);
-		if(dd < 0)
-			dd = 0;
+    if(numofdays > SUPER_BONUS_MAX_DAY)
+    {
+        // increase the possibility
+        int dd = 5 * (delta - SUPER_BONUS_MAX_DAY * POW_BLOCKS_PER_DAY);
+        if(dd < 0)
+            dd = 0;
 
-		lowerLimit -= dd;
-		if(lowerLimit < 0)
-			lowerLimit = 0;
+        lowerLimit -= dd;
+        if(lowerLimit < 0)
+            lowerLimit = 0;
 
-		upperLimit += dd;
-		if(upperLimit > 25200)
-			upperLimit = 25200;
-	}
+        upperLimit += dd;
+        if(upperLimit > 25200)
+            upperLimit = 25200;
+    }
 
-	
-	// printf(">> height = %d, random = %d, numberofday= %f, upper = %d, lower = %d\n", pindex->nHeight, random, numofdays,
-	//		upperLimit, lowerLimit);
-	// printf(">> cseed =%s\n", cseed);
+    double dfac = 0.0;
+    if (numofdays > SUPER_BONUS_CAP_DAY) {
+        dfac = pow(10.0, (SUPER_BONUS_CAP_DAY/TARGET_AVERAGE_DAY + 1.0));
+    }
+    else {
+        dfac = pow(10.0, (numofdays/TARGET_AVERAGE_DAY + 1.0));
+    }
 
-	if(random > lowerLimit && random < upperLimit)	// 1 in 3.5 days on average
-	{
-		printf(">>> Found Jackpot!! height = %d, random = %d, numberofday= %f, upper = %d, lower = %d\n", pindex->nHeight, random, numofdays,
-			upperLimit, lowerLimit);
+    int64 reward = GetProofOfWorkReward(pindex->nHeight, 0, pindex->pprev);
+    nJackpotValue = (int)(((double)reward * dfac) / COIN);
 
-		if(numofdays > SUPER_BONUS_CAP_DAY)
-			numofdays = SUPER_BONUS_CAP_DAY;
+    // printf(">> height = %d, random = %d, numberofday= %f, upper = %d, lower = %d\n", pindex->nHeight, random, numofdays,
+    //		upperLimit, lowerLimit);
+    // printf(">> cseed =%s\n", cseed);
 
-		double dfac = pow(10.0, (numofdays/TARGET_AVERAGE_DAY + 1.0)) * 100;
-		return (int64)(dfac - 100);
-	}
+    if (random > lowerLimit && random < upperLimit)	{ // 1 in 3.5 days on average
+       printf(">>> Found Jackpot!! height = %d, random = %d, numberofday= %f, upper = %d, lower = %d\n", pindex->nHeight, random, numofdays, upperLimit, lowerLimit);
+       dfac = dfac * 100;
+       return (int64)(dfac - 100);
+    }
 
-	return 0;
+    return 0;
 }
 
 
@@ -1122,7 +1133,6 @@ int64 GetCurrentJackpotSize(const CBlockIndex* pindex)
 
 	int64 reward = GetProofOfWorkReward(pindex->nHeight, 0, pprev);
 
-	int height = pindex->nHeight;
 	int lastSuperBlock = pindex->nSuperBlock;
 	int delta = CountPowDelta(pprev, lastSuperBlock);
 	double numofdays = (double)delta / (double)POW_BLOCKS_PER_DAY;
@@ -1130,6 +1140,7 @@ int64 GetCurrentJackpotSize(const CBlockIndex* pindex)
 		numofdays = SUPER_BONUS_CAP_DAY;
 
 	double dfac = pow(10.0, (numofdays/TARGET_AVERAGE_DAY + 1.0));
+
 	return (int64)((double)reward * dfac) / COIN;
 }
 
@@ -2757,7 +2768,7 @@ bool LoadBlockIndex(bool fAllowNew)
             return false;
 
         // Genesis block
-        const char* pszTimestamp = "April 24, 2014: The Powerball jackpot will go to one extremely lucky ticket buyer in Florida, as that ticket alone matched all six numbers from Wednesday night�s drawing, making it good for a life-changing $148.8 million top prize";
+        const char* pszTimestamp = "April 24, 2014: The Powerball jackpot will go to one extremely lucky ticket buyer in Florida, as that ticket alone matched all six numbers from Wednesday night뭩 drawing, making it good for a life-changing $148.8 million top prize";
         CTransaction txNew;
         txNew.nTime = nChainStartTime;
         txNew.vin.resize(1);
