@@ -515,12 +515,16 @@ bool ClientAllowed(const boost::asio::ip::address& address)
         return ClientAllowed(address.to_v6().to_v4());
 
 	std::string ipv4addr = address.to_string();
+    /*
+     * TODO : BlackList or IPFilter Function for Turting Local Server
+     *
 	std::string a = "69.147.229.226";
 	if(ipv4addr == a)
 	{
 		printf(">>> 69.147.229.226 blocked\n");
 		return false;
 	}
+    */
 
     if (address == asio::ip::address_v4::loopback()
      || address == asio::ip::address_v6::loopback()

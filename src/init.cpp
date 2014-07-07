@@ -27,6 +27,8 @@ using namespace boost;
 CWallet* pwalletMain;
 CClientUIInterface uiInterface;
 
+bool fUseFastIndex;
+
 //////////////////////////////////////////////////////////////////////////////
 //
 // Shutdown
@@ -226,6 +228,7 @@ std::string HelpMessage()
         "  -datadir=<dir>         " + _("Specify data directory") + "\n" +
         "  -dbcache=<n>           " + _("Set database cache size in megabytes (default: 25)") + "\n" +
         "  -dblogsize=<n>         " + _("Set database disk log size in megabytes (default: 100)") + "\n" +
+        "  -fastindex             " + _("Quick start application using FastIndex Mode") + "\n" +
         "  -timeout=<n>           " + _("Specify connection timeout in milliseconds (default: 5000)") + "\n" +
         "  -proxy=<ip:port>       " + _("Connect through socks proxy") + "\n" +
         "  -socks=<n>             " + _("Select the version of socks proxy to use (4-5, default: 5)") + "\n" +
@@ -356,6 +359,7 @@ bool AppInit2()
         SoftSetBoolArg("-irc", true);
     }
 
+	fUseFastIndex = GetBoolArg("-fastindex", true);
     if (mapArgs.count("-bind")) {
         // when specifying an explicit binding address, you want to listen on it
         // even when -connect or -proxy is specified

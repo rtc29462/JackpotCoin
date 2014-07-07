@@ -12,6 +12,8 @@
 #include <QSet>
 #include <QTimer>
 
+extern bool fWalletUnlockStakingOnly;
+
 WalletModel::WalletModel(CWallet *wallet, OptionsModel *optionsModel, QObject *parent) :
     QObject(parent), wallet(wallet), optionsModel(optionsModel), addressTableModel(0),
     transactionTableModel(0),
@@ -367,7 +369,11 @@ WalletModel::UnlockContext WalletModel::requestUnlock()
         // Request UI to unlock wallet
         emit requireUnlock();
     }
-
+    else if (fWalletUnlockStakingOnly)
+    {
+        setWalletLocked(true);
+        emit requireUnlock();
+    }
     // If wallet is still locked, unlock was failed or cancelled, mark context as invalid
     bool valid = getEncryptionStatus() != Locked;
 

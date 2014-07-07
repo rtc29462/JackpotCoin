@@ -41,8 +41,8 @@ static CBigNum bnProofOfWorkLimitTestNet(~uint256(0) >> 20);
 static CBigNum bnProofOfStakeLimitTestNet(~uint256(0) >> 20);
 
 unsigned int nStakeMinAge = 60 * 60 * 24 * 1;			// minimum age for coin age: 1d
-unsigned int nStakeMaxAge = 60 * 60 * 24 * 30;	        // stake age of full weight: 30d
-unsigned int nStakeTargetSpacing = 20;			        // 20 sec block spacing for PoS
+unsigned int nStakeMaxAge = 60 * 60 * 24 * 30;	        // stake age of full weight: 60d
+unsigned int nStakeTargetSpacing = 20;			        // 10 sec block spacing for PoS
 unsigned int nWorkTargetSpacing = 120;                  // 120 sec block spacing for PoW
 
 int64 nChainStartTime = 1398357357;
@@ -84,7 +84,7 @@ static const int checkpointPoWHeight[NUM_OF_POW_CHECKPOINT][2] =
 	{ 75000, 12354},
 	{100000, 15639},
 	{125000, 18946},
-	{150000, 22309}
+    {150000, 22309},
 };
 
 //
@@ -4552,19 +4552,19 @@ void BitcoinMiner(CWallet *pwallet, bool fProofOfStake)
     {
         if (fShutdown)
             return;
-        while (vNodes.empty() || IsInitialBlockDownload())
+        while (vNodes.empty() || IsInitialBlockDownload() || pwallet->IsLocked())
         {
+            nLastCoinStakeSearchInterval = 0;
             Sleep(1000);
             if (fShutdown)
                 return;
             if ((!fGenerateBitcoins) && !fProofOfStake)
                 return;
-        }
-
-        while (pwallet->IsLocked())
-        {
-            strMintWarning = strMintMessage;
-            Sleep(1000);
+            if (pwallet->IsLocked())
+            {
+               strMintWarning = strMintMessage;
+               Sleep(2000);
+            }
         }
         strMintWarning = "";
 
@@ -4584,7 +4584,7 @@ void BitcoinMiner(CWallet *pwallet, bool fProofOfStake)
             if (GetBoolArg("-nostake")) 
             {
                // Temporary Stop Stake Mining
-               Sleep(9000);
+               Sleep(5000);
             }
 			// ppcoin: if proof-of-stake block found then process block
             else if (pblock->IsProofOfStake())
@@ -4614,9 +4614,9 @@ void BitcoinMiner(CWallet *pwallet, bool fProofOfStake)
         uint256 hashTarget = CBigNum().SetCompact(pblock->nBits).getuint256();
         uint256 hash;
 
-        unsigned int max_nonce = 0xffff0000;
+ //       unsigned int max_nonce = 0xffff0000;
  //       block_header res_header;
-        uint256 result;
+ //       uint256 result;
 
         loop
         {

@@ -574,7 +574,7 @@ Value getbalance(const Array& params, bool fHelp)
                     nBalance += r.second;
             }
             BOOST_FOREACH(const PAIRTYPE(CTxDestination,int64)& r, listSent)
-                nBalance -= r.second;
+            nBalance -= r.second;
             nBalance -= allFee;
             nBalance += allGeneratedMature;
         }

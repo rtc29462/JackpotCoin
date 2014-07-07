@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>820</width>
+    <width>800</width>
     <height>500</height>
    </rect>
   </property>
@@ -16,6 +16,12 @@
     <verstretch>0</verstretch>
    </sizepolicy>
   </property>
+  <property name="maximumSize">
+   <size>
+    <width>2048</width>
+    <height>500</height>
+   </size>
+  </property>
   <property name="windowTitle">
    <string>Form</string>
   </property>
@@ -24,6 +30,12 @@
     <layout class="QVBoxLayout" name="verticalLayout_2">
      <item>
       <widget class="QFrame" name="frame">
+       <property name="maximumSize">
+        <size>
+         <width>16777215</width>
+         <height>172</height>
+        </size>
+       </property>
        <property name="frameShape">
         <enum>QFrame::StyledPanel</enum>
        </property>
@@ -243,7 +255,7 @@
          <rect>
           <x>10</x>
           <y>0</y>
-          <width>371</width>
+          <width>381</width>
           <height>50</height>
          </rect>
         </property>
@@ -319,9 +331,10 @@
         </property>
         <property name="font">
          <font>
-          <family>Courier New</family>
-          <pointsize>32</pointsize>
+          <family>Arial</family>
+          <pointsize>24</pointsize>
           <weight>75</weight>
+          <italic>true</italic>
           <bold>true</bold>
          </font>
         </property>
@@ -332,10 +345,7 @@
          <string>Your current balance</string>
         </property>
         <property name="text">
-         <string notr="true">0 JACKPOT</string>
-        </property>
-        <property name="alignment">
-         <set>Qt::AlignBottom|Qt::AlignHCenter</set>
+         <string notr="true">Jack Pot</string>
         </property>
         <property name="textInteractionFlags">
          <set>Qt::NoTextInteraction</set>

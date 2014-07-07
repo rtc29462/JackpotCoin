@@ -134,7 +134,7 @@ OverviewPage::~OverviewPage()
 
 void OverviewPage::setJackpot() {
      currentJackpot = (qint64) nJackpotValue;
-     ui->labelCurrentJackpot->setText(QString::number(nJackpotValue) + QString(" JPC"));
+     ui->labelCurrentJackpot->setText(QString("JackPot   ") + QString::number(nJackpotValue) + QString(" JPC"));
 }
 
 void OverviewPage::setBalance(qint64 balance, qint64 stake, qint64 unconfirmedBalance, qint64 immatureBalance)
