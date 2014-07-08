@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2009-2010 Satoshi Nakamoto
+// Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2012 The Bitcoin developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -2767,7 +2767,7 @@ bool LoadBlockIndex(bool fAllowNew)
             return false;
 
         // Genesis block
-        const char* pszTimestamp = "April 24, 2014: The Powerball jackpot will go to one extremely lucky ticket buyer in Florida, as that ticket alone matched all six numbers from Wednesday night뭩 drawing, making it good for a life-changing $148.8 million top prize";
+        const char* pszTimestamp = "April 24, 2014: The Powerball jackpot will go to one extremely lucky ticket buyer in Florida, as that ticket alone matched all six numbers from Wednesday night�s drawing, making it good for a life-changing $148.8 million top prize";
         CTransaction txNew;
         txNew.nTime = nChainStartTime;
         txNew.vin.resize(1);
