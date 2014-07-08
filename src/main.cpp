@@ -41,8 +41,8 @@ static CBigNum bnProofOfWorkLimitTestNet(~uint256(0) >> 20);
 static CBigNum bnProofOfStakeLimitTestNet(~uint256(0) >> 20);
 
 unsigned int nStakeMinAge = 60 * 60 * 24 * 1;			// minimum age for coin age: 1d
-unsigned int nStakeMaxAge = 60 * 60 * 24 * 30;	        // stake age of full weight: 60d
-unsigned int nStakeTargetSpacing = 20;			        // 10 sec block spacing for PoS
+unsigned int nStakeMaxAge = 60 * 60 * 24 * 30;	        // stake age of full weight: 30d
+unsigned int nStakeTargetSpacing = 20;			        // 20 sec block spacing for PoS
 unsigned int nWorkTargetSpacing = 120;                  // 120 sec block spacing for PoW
 
 int64 nChainStartTime = 1398357357;
@@ -84,7 +84,7 @@ static const int checkpointPoWHeight[NUM_OF_POW_CHECKPOINT][2] =
 	{ 75000, 12354},
 	{100000, 15639},
 	{125000, 18946},
-    {150000, 22309},
+    {150000, 22309}
 };
 
 //
@@ -1140,7 +1140,6 @@ int64 GetCurrentJackpotSize(const CBlockIndex* pindex)
 		numofdays = SUPER_BONUS_CAP_DAY;
 
 	double dfac = pow(10.0, (numofdays/TARGET_AVERAGE_DAY + 1.0));
-
 	return (int64)((double)reward * dfac) / COIN;
 }
 
@@ -4563,7 +4562,7 @@ void BitcoinMiner(CWallet *pwallet, bool fProofOfStake)
             if (pwallet->IsLocked())
             {
                strMintWarning = strMintMessage;
-               Sleep(2000);
+               Sleep(1000);
             }
         }
         strMintWarning = "";
@@ -4584,7 +4583,7 @@ void BitcoinMiner(CWallet *pwallet, bool fProofOfStake)
             if (GetBoolArg("-nostake")) 
             {
                // Temporary Stop Stake Mining
-               Sleep(5000);
+               Sleep(9000);
             }
 			// ppcoin: if proof-of-stake block found then process block
             else if (pblock->IsProofOfStake())

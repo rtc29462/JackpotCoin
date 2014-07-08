@@ -86,7 +86,6 @@ extern std::map<uint256, CBlock*> mapOrphanBlocks;
 
 // Settings
 extern int64 nTransactionFee;
-extern bool  fUseFastIndex;
 
 // Minimum disk space required - used in CheckDiskSpace()
 static const uint64 nMinDiskSpace = 52428800;
@@ -532,12 +531,6 @@ public:
         // ppcoin: the coin stake transaction is marked with the first output empty
         return (vin.size() > 0 && (!vin[0].prevout.IsNull()) && vout.size() >= 2 && vout[0].IsEmpty());
     }
-
-	bool IsCoinBaseOrStake() const
-    {
-        return (IsCoinBase() || IsCoinStake());
-    }
-
 
     /** Check for standard transaction types
         @return True if all outputs (scriptPubKeys) use only standard transaction forms
@@ -1354,9 +1347,6 @@ public:
 /** Used to marshal pointers into hashes for db storage. */
 class CDiskBlockIndex : public CBlockIndex
 {
-private:
-    uint256 blockHash;
-
 public:
     uint256 hashPrev;
     uint256 hashNext;
@@ -1365,7 +1355,6 @@ public:
     {
         hashPrev = 0;
         hashNext = 0;
-        blockHash = 0;
     }
 
     explicit CDiskBlockIndex(CBlockIndex* pindex) : CBlockIndex(*pindex)
@@ -1409,23 +1398,10 @@ public:
         READWRITE(nNonce);
         READWRITE(nSuperBlock);
         READWRITE(nRoundMask);
-//
-// For FastIndex mode, It is an advantage ????? hmm.
-// 
-//      READWRITE(blockHash);
-
 	)
 
     uint256 GetBlockHash() const
     {
-
-//      
-// For FastIndex Mode
-//
-/*
-		if (fUseFastIndex && (nTime < GetAdjustedTime() - 12 * nMaxClockDrift) && blockHash != 0)
-			return blockHash;
-*/			
         CBlock block;
         block.nVersion			= nVersion;
         block.hashPrevBlock		= hashPrev;

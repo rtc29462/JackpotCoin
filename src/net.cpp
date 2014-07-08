@@ -586,8 +586,6 @@ bool CNode::IsBanned(CNetAddr ip)
     return fResult;
 }
 
-extern CMedianFilter<int> cPeerBlockCounts;
-
 bool CNode::Misbehaving(int howmuch)
 {
     if (addr.IsLocal())
@@ -607,7 +605,6 @@ bool CNode::Misbehaving(int howmuch)
                 setBanned[addr] = banTime;
         }
         CloseSocketDisconnect();
-        cPeerBlockCounts.removeLast(nStartingHeight);
         return true;
     } else
         printf("Misbehaving: %s (%d -> %d)\n", addr.ToString().c_str(), nMisbehavior-howmuch, nMisbehavior);

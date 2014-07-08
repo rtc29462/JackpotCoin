@@ -12,7 +12,7 @@ using namespace boost;
 
 
 static uint64 nAccountingEntryNumber = 0;
-extern bool fWalletUnlockStakingOnly;
+extern bool fWalletUnlockMintOnly;
 
 //
 // CWalletDB

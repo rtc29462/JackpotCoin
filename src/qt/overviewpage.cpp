@@ -16,7 +16,7 @@
 #define DECORATION_SIZE 64
 #define NUM_ITEMS 6
 
-extern int nJackpotValue;
+extern int nJackpotValue; 
 
 class TxViewDelegate : public QAbstractItemDelegate
 {
@@ -144,7 +144,6 @@ void OverviewPage::setBalance(qint64 balance, qint64 stake, qint64 unconfirmedBa
     currentStake = stake;
     currentUnconfirmedBalance = unconfirmedBalance;
     currentImmatureBalance = immatureBalance;
-
     ui->labelBalance->setText(BitcoinUnits::formatWithUnit(unit, balance));
     ui->labelStake->setText(BitcoinUnits::formatWithUnit(unit, stake));
     ui->labelUnconfirmed->setText(BitcoinUnits::formatWithUnit(unit, unconfirmedBalance));
@@ -155,9 +154,6 @@ void OverviewPage::setBalance(qint64 balance, qint64 stake, qint64 unconfirmedBa
     bool showImmature = immatureBalance != 0;
     ui->labelImmature->setVisible(showImmature);
     ui->labelImmatureText->setVisible(showImmature);
-
-    //
-    setJackpot();
 }
 
 void OverviewPage::setNumTransactions(int count)

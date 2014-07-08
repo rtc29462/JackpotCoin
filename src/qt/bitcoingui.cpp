@@ -62,7 +62,7 @@
 extern CWallet *pwalletMain;
 extern int64 nLastCoinStakeSearchInterval;
 extern unsigned int nStakeTargetSpacing;
-extern bool fWalletUnlockStakingOnly;
+extern bool fWalletUnlockMintOnly;
 
 BitcoinGUI::BitcoinGUI(QWidget *parent):
     QMainWindow(parent),
@@ -879,7 +879,7 @@ void BitcoinGUI::unlockWallet()
     if(!walletModel)
         return;
     // Unlock wallet when requested by wallet model
-    if(walletModel->getEncryptionStatus() == WalletModel::Locked || fWalletUnlockStakingOnly)
+    if(walletModel->getEncryptionStatus() == WalletModel::Locked || fWalletUnlockMintOnly)
     {
         AskPassphraseDialog::Mode mode = AskPassphraseDialog::Unlock;
         AskPassphraseDialog dlg(mode, this);
@@ -896,7 +896,7 @@ void BitcoinGUI::lockWalletToggle()
     // Unlock wallet when requested by wallet model
     if(walletModel->getEncryptionStatus() == WalletModel::Locked)
     {
-        AskPassphraseDialog::Mode mode = AskPassphraseDialog::UnlockStaking;
+        AskPassphraseDialog::Mode mode = AskPassphraseDialog::UnlockMint;
         AskPassphraseDialog dlg(mode, this);
         dlg.setModel(walletModel);
         dlg.exec();
@@ -904,7 +904,7 @@ void BitcoinGUI::lockWalletToggle()
     else if(walletModel->getEncryptionStatus() == WalletModel::Unlocked)
     {
         walletModel->setWalletLocked(true);
-        fWalletUnlockStakingOnly = false;
+        fWalletUnlockMintOnly = false;
     }
 }
 

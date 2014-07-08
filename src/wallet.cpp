@@ -12,8 +12,8 @@
 #include "kernel.h"
 #include "coincontrol.h"
 
-#include <boost/algorithm/string.hpp>
-
+//#include <boost/algorithm/string.hpp>
+//
 using namespace std;
 extern int nStakeMaxAge;
 
@@ -87,7 +87,7 @@ bool CWallet::AddCScript(const CScript& redeemScript)
 
 // ppcoin: optional setting to unlock wallet for block minting only;
 //         serves to disable the trivial sendmoney when OS account compromised
-bool fWalletUnlockStakingOnly = false;
+bool fWalletUnlockMintOnly = false;
 
 bool CWallet::Unlock(const SecureString& strWalletPassphrase)
 {
@@ -1703,9 +1703,9 @@ string CWallet::SendMoney(CScript scriptPubKey, int64 nValue, CWalletTx& wtxNew,
         printf("SendMoney() : %s", strError.c_str());
         return strError;
     }
-    if (fWalletUnlockStakingOnly)
+    if (fWalletUnlockMintOnly)
     {
-        string strError = _("Error: Wallet unlocked for block staking only, unable to create transaction.");
+        string strError = _("Error: Wallet unlocked for block minting only, unable to create transaction.");
         printf("SendMoney() : %s", strError.c_str());
         return strError;
     }

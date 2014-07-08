@@ -18,7 +18,7 @@ class AskPassphraseDialog : public QDialog
 public:
     enum Mode {
         Encrypt,        /**< Ask passphrase twice and encrypt */
-        UnlockStaking,  /**< Ask passphase to unlock for PoS only */
+        UnlockMint,  /**< Ask passphase to unlock for PoS only */
         Unlock,         /**< Ask passphrase and unlock */
         ChangePass,     /**< Ask old passphrase + new passphrase twice */
         Decrypt         /**< Ask passphrase and decrypt wallet */

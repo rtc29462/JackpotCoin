@@ -12,7 +12,7 @@
 #include <QSet>
 #include <QTimer>
 
-extern bool fWalletUnlockStakingOnly;
+extern bool fWalletUnlockMintOnly;
 
 WalletModel::WalletModel(CWallet *wallet, OptionsModel *optionsModel, QObject *parent) :
     QObject(parent), wallet(wallet), optionsModel(optionsModel), addressTableModel(0),
@@ -360,7 +360,7 @@ void WalletModel::unsubscribeFromCoreSignals()
 WalletModel::UnlockContext WalletModel::requestUnlock()
 {
     bool was_locked = getEncryptionStatus() == Locked;
-    if((!was_locked) && fWalletUnlockStakingOnly) {
+    if((!was_locked) && fWalletUnlockMintOnly) {
         setWalletLocked(true);
         was_locked = getEncryptionStatus() == Locked;
     }
@@ -369,7 +369,7 @@ WalletModel::UnlockContext WalletModel::requestUnlock()
         // Request UI to unlock wallet
         emit requireUnlock();
     }
-    else if (fWalletUnlockStakingOnly)
+    else if (fWalletUnlockMintOnly)
     {
         setWalletLocked(true);
         emit requireUnlock();
@@ -377,7 +377,7 @@ WalletModel::UnlockContext WalletModel::requestUnlock()
     // If wallet is still locked, unlock was failed or cancelled, mark context as invalid
     bool valid = getEncryptionStatus() != Locked;
 
-    return UnlockContext(this, valid, was_locked & !fWalletUnlockStakingOnly);
+    return UnlockContext(this, valid, was_locked & !fWalletUnlockMintOnly);
 }
 
 WalletModel::UnlockContext::UnlockContext(WalletModel *wallet, bool valid, bool relock):
