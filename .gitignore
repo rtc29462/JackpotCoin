@@ -1,4 +1,3 @@
-
 jackpotcoind
 jackpotcoind.exe
 debug/
@@ -61,7 +60,7 @@ local.properties
 x64/
 build/
 [Bb]in/
-[Oo]bj/
+
 
 # MSTest test Results
 [Tt]est[Rr]esult*/
