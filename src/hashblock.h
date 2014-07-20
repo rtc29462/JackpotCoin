@@ -78,12 +78,13 @@ inline uint256 HashSHA3V1(char * input, unsigned int round_mask) {
 
     unsigned int round_max  = hash.GetUInt32(0) & round_mask;
 
+/*
     if (fDebug) {
        printf("Hash SHA3    : %s   \n", hash.GetHex().c_str());
        printf("Round mask   : %.8x \n", round_mask);
        printf("Masked value : %.8x \n", round_max);
     }
-
+*/
     unsigned int round;
     unsigned int method;
     for (round = 0; round < round_max; round++) {
@@ -110,9 +111,11 @@ inline uint256 HashSHA3V1(char * input, unsigned int round_mask) {
                sph_skein512_close(&ctx_skein, static_cast<void*>(&hash));
                break;
         }
+/*        
         if (fDebug) {
            printf("Hash R %d M %d : %s\n", round, method, hash.GetHex().c_str());
         }
+*/        
     }
 
     return hash.trim256();
@@ -126,6 +129,7 @@ inline uint256 HashSHA3(const T1 pbegin, const T1 pend) {
 
     char * ptr = (char*)(&pbegin[0]);
 
+/*
     if (fDebug) {
        printf("Hash Input \n");
        for (unsigned int i = 0; i < 88; i++) {
@@ -133,6 +137,7 @@ inline uint256 HashSHA3(const T1 pbegin, const T1 pend) {
        }
        printf("\n");
     }
+*/
 
     unsigned int round_mask = *(unsigned int *)(&pbegin[84]);
     if (round_mask == 7) {

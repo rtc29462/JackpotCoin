@@ -1146,10 +1146,19 @@ int64 GetCurrentJackpotSize(const CBlockIndex* pindex)
 
 // miner's coin stake reward based on nBits and coin age spent (coin-days)
 // simple algorithm, not depend on the diff
-int64 GetProofOfStakeReward(int64 nCoinAge, unsigned int nBits, unsigned int nTime, const CBlockIndex* pindex)
+int64 GetProofOfStakeReward(int64 nCoinAge, unsigned int nBits, unsigned int nTime, const CBlockIndex* pindex, const bool IsNewBlock)
 {
     int64 nRewardCoinDay = MAX_MINT_PROOF_OF_STAKE_END;
 	int nPoSHeight = GetPosHeight(pindex);
+	
+	//
+	// nHeight difference between Create and Verificaiton Proces
+	//
+	if (pindex->nHeight > POS_BUG_FIX) {
+   	   if (IsNewBlock) {
+	      nPoSHeight += 1;
+	   }
+	}
 
 	if(nPoSHeight < 7884000)	
 	{
@@ -1161,6 +1170,7 @@ int64 GetProofOfStakeReward(int64 nCoinAge, unsigned int nBits, unsigned int nTi
     int64 nSubsidy = nCoinAge * nRewardCoinDay;
 	if (fDebug && GetBoolArg("-printcreation"))
         printf("GetProofOfStakeReward(): create=%s nCoinAge=%"PRI64d" nBits=%d\n", FormatMoney(nSubsidy).c_str(), nCoinAge, nBits);
+        
     return nSubsidy;
 }
 
@@ -1573,7 +1583,7 @@ bool CTransaction::ConnectInputs(CTxDB& txdb, MapPrevTx inputs,
             if (!GetCoinAge(txdb, nCoinAge))
                 return error("ConnectInputs() : %s unable to get coin age for coinstake", GetHash().ToString().substr(0,10).c_str());
             int64 nStakeReward = GetValueOut() - nValueIn;
-            if (nStakeReward > GetProofOfStakeReward(nCoinAge, pindexBlock->nBits, nTime, pindexBlock) - GetMinFee() + MIN_TX_FEE)
+            if (nStakeReward > GetProofOfStakeReward(nCoinAge, pindexBlock->nBits, nTime, pindexBlock, false) - GetMinFee() + MIN_TX_FEE)
                 return DoS(100, error("ConnectInputs() : %s stake reward exceeded", GetHash().ToString().substr(0,10).c_str()));
         }
         else
@@ -4158,7 +4168,6 @@ CBlock* CreateNewBlock(CWallet* pwallet, bool fProofOfStake)
         int64 nSearchTime = txCoinStake.nTime; // search to current time
         if (nSearchTime > nLastCoinStakeSearchTime)
         {
-			// printf(">>> OK1\n");
             if (pwallet->CreateCoinStake(*pwallet, pblock->nBits, nSearchTime-nLastCoinStakeSearchTime, txCoinStake))
             {
 				if (txCoinStake.nTime >= max(pindexPrev->GetMedianTimePast()+1, pindexPrev->GetBlockTime() - nMaxClockDrift))

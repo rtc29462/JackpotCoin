@@ -40,7 +40,8 @@ static const int64 MAX_MINT_PROOF_OF_STAKE_START	= 0.001  * COIN;		    // 0.1% d
 static const int64 MAX_MINT_PROOF_OF_STAKE_END		= 0.0001 * COIN;            // 0.01% daily interest after 5 years
 static const int64 MIN_TXOUT_AMOUNT = MIN_TX_FEE;
 
-static const int HASH_ALGO_SWITCH_BLOCK = 6000;		// hardfork to fix the hash algorithm
+static const int HASH_ALGO_SWITCH_BLOCK =   6000;		// hardfork to fix the hash algorithm
+static const int POS_BUG_FIX            = 453000;       // hardfork to fix PoS reward calculation     
 
 inline bool MoneyRange(int64 nValue) { return (nValue >= 0 && nValue <= MAX_MONEY); }
 
@@ -115,7 +116,7 @@ void FormatHashBuffers(CBlock* pblock, char* pdata);
 bool CheckWork(CBlock* pblock, CWallet& wallet, CReserveKey& reservekey);
 bool CheckProofOfWork(uint256 hash, unsigned int nBits);
 int64 GetProofOfWorkReward(int nHeight, int64 nFees, const CBlockIndex* pindex);
-int64 GetProofOfStakeReward(int64 nCoinAge, unsigned int nBits, unsigned int nTime, const CBlockIndex* pindex);
+int64 GetProofOfStakeReward(int64 nCoinAge, unsigned int nBits, unsigned int nTime, const CBlockIndex* pindex, const bool IsNewBlock);
 unsigned int ComputeMinWork(unsigned int nBase, int64 nTime);
 unsigned int ComputeMinStake(unsigned int nBase, int64 nTime, unsigned int nBlockTime);
 int GetNumBlocksOfPeers();
