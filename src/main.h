@@ -41,7 +41,7 @@ static const int64 MAX_MINT_PROOF_OF_STAKE_END		= 0.0001 * COIN;            // 0
 static const int64 MIN_TXOUT_AMOUNT = MIN_TX_FEE;
 
 static const int HASH_ALGO_SWITCH_BLOCK =   6000;		// hardfork to fix the hash algorithm
-static const int POS_BUG_FIX            = 453000;       // hardfork to fix PoS reward calculation     
+static const int POS_BUG_FIX            = 451000;       // hardfork to fix PoS reward calculation     
 
 inline bool MoneyRange(int64 nValue) { return (nValue >= 0 && nValue <= MAX_MONEY); }
 
