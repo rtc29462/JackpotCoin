@@ -6,10 +6,11 @@
 namespace Ui {
     class SendCoinsEntry;
 }
+
 class WalletModel;
 class SendCoinsRecipient;
 
-/** A single entry in the dialog for sending bitcoins. */
+// A single entry in the dialog for sending bitcoins.
 class SendCoinsEntry : public QFrame
 {
     Q_OBJECT
@@ -22,13 +23,13 @@ public:
     bool validate();
     SendCoinsRecipient getValue();
 
-    /** Return whether the entry is still empty and unedited */
+    // Return whether the entry is still empty and unedited
     bool isClear();
 
     void setValue(const SendCoinsRecipient &value);
 
-    /** Set up the tab chain manually, as Qt messes up the tab chain by default in some cases (issue https://bugreports.qt-project.org/browse/QTBUG-10907).
-     */
+    // Set up the tab chain manually, as Qt messes up the tab chain by default in some cases
+    // (issue https://bugreports.qt-project.org/browse/QTBUG-10907).
     QWidget *setupTabChain(QWidget *prev);
 
     void setFocus();

@@ -5,7 +5,18 @@
 
 #include "walletdb.h"
 #include "wallet.h"
+
+#include <iostream>
+#include <fstream>
+
+#include <boost/version.hpp>
 #include <boost/filesystem.hpp>
+#include <boost/algorithm/string.hpp>
+
+#include <boost/date_time/posix_time/posix_time.hpp>
+#include <boost/lexical_cast.hpp>
+#include <boost/variant/get.hpp>
+#include <boost/algorithm/string.hpp>
 
 using namespace std;
 using namespace boost;
@@ -73,7 +84,7 @@ void CWalletDB::ListAccountCreditDebit(const string& strAccount, list<CAccountin
     if (!pcursor)
         throw runtime_error("CWalletDB::ListAccountCreditDebit() : cannot create DB cursor");
     unsigned int fFlags = DB_SET_RANGE;
-    loop
+    while (true)
     {
         // Read next record
         CDataStream ssKey(SER_DISK, CLIENT_VERSION);
@@ -402,7 +413,9 @@ DBErrors CWalletDB::LoadWallet(CWallet* pwallet)
         if (Read((string)"minversion", nMinVersion))
         {
             if (nMinVersion > CLIENT_VERSION)
+            {
                 return DB_TOO_NEW;
+            }
             pwallet->LoadMinVersion(nMinVersion);
         }
 
@@ -414,40 +427,50 @@ DBErrors CWalletDB::LoadWallet(CWallet* pwallet)
             return DB_CORRUPT;
         }
 
-        loop
+        unsigned int counter = 0;
+        
+        while (true)
         {
             // Read next record
             CDataStream ssKey(SER_DISK, CLIENT_VERSION);
             CDataStream ssValue(SER_DISK, CLIENT_VERSION);
             int ret = ReadAtCursor(pcursor, ssKey, ssValue);
             if (ret == DB_NOTFOUND)
+            {
                 break;
+            }
             else if (ret != 0)
             {
                 printf("Error reading next record from wallet database\n");
                 return DB_CORRUPT;
             }
-
+            
             // Try to be tolerant of single corrupt records:
             string strType, strErr;
-            if (!ReadKeyValue(pwallet, ssKey, ssValue, nFileVersion,
-                              vWalletUpgrade, fIsEncrypted, fAnyUnordered, strType, strErr))
+            if (!ReadKeyValue(pwallet, ssKey, ssValue, nFileVersion, vWalletUpgrade, fIsEncrypted, fAnyUnordered, strType, strErr))
             {
                 // losing keys is considered a catastrophic error, anything else
                 // we assume the user can live with:
                 if (IsKeyType(strType))
+                {
                     result = DB_CORRUPT;
+                }
                 else
                 {
                     // Leave other errors alone, if we try to fix them we might make things worse.
-                    fNoncriticalErrors = true; // ... but do warn the user there is something wrong.
+                    fNoncriticalErrors = true;
+                    // ... but do warn the user there is something wrong.
                     if (strType == "tx")
+                    {
                         // Rescan if there is a bad transaction record:
                         SoftSetBoolArg("-rescan", true);
+                    }
                 }
             }
             if (!strErr.empty())
+            {
                 printf("%s\n", strErr.c_str());
+            }
         }
         pcursor->close();
     }
@@ -500,7 +523,7 @@ void ThreadFlushWalletDB(void* parg)
     int64 nLastWalletUpdate = GetTime();
     while (!fShutdown)
     {
-        Sleep(500);
+        MilliSleep(500);
 
         if (nLastSeen != nWalletDBUpdated)
         {
@@ -579,10 +602,12 @@ bool BackupWallet(const CWallet& wallet, const string& strDest)
                 }
             }
         }
-        Sleep(100);
+        MilliSleep(100);
     }
     return false;
 }
+
+
 
 //
 // Try to (very carefully!) recover wallet.dat if there is a problem.
@@ -596,13 +621,15 @@ bool CWalletDB::Recover(CDBEnv& dbenv, std::string filename, bool fOnlyKeys)
     // Rewrite salvaged data to wallet.dat
     // Set -rescan so any missing transactions will be
     // found.
+
     int64 now = GetTime();
     std::string newFilename = strprintf("wallet.%"PRI64d".bak", now);
 
-    int result = dbenv.dbenv.dbrename(NULL, filename.c_str(), NULL,
-                                      newFilename.c_str(), DB_AUTO_COMMIT);
+    int result = dbenv.dbenv.dbrename(NULL, filename.c_str(), NULL, newFilename.c_str(), DB_AUTO_COMMIT);
     if (result == 0)
+    {
         printf("Renamed %s to %s\n", filename.c_str(), newFilename.c_str());
+    }
     else
     {
         printf("Failed to rename %s to %s\n", filename.c_str(), newFilename.c_str());
@@ -621,10 +648,10 @@ bool CWalletDB::Recover(CDBEnv& dbenv, std::string filename, bool fOnlyKeys)
     bool fSuccess = allOK;
     Db* pdbCopy = new Db(&dbenv.dbenv, 0);
     int ret = pdbCopy->open(NULL,                 // Txn pointer
-                            filename.c_str(),   // Filename
-                            "main",    // Logical db name
-                            DB_BTREE,  // Database type
-                            DB_CREATE,    // Flags
+                            filename.c_str(),     // Filename
+                            "main",               // Logical db name
+                            DB_BTREE,             // Database type
+                            DB_CREATE,            // Flags
                             0);
     if (ret > 0)
     {
@@ -638,17 +665,14 @@ bool CWalletDB::Recover(CDBEnv& dbenv, std::string filename, bool fOnlyKeys)
     bool fAnyUnordered = false;
 
     DbTxn* ptxn = dbenv.TxnBegin();
-    BOOST_FOREACH(CDBEnv::KeyValPair& row, salvagedData)
+    BOOST_FOREACH (CDBEnv::KeyValPair& row, salvagedData)
     {
         if (fOnlyKeys)
         {
             CDataStream ssKey(row.first, SER_DISK, CLIENT_VERSION);
             CDataStream ssValue(row.second, SER_DISK, CLIENT_VERSION);
             string strType, strErr;
-            bool fReadOK = ReadKeyValue(&dummyWallet, ssKey, ssValue,
-                                        nFileVersion, vWalletUpgrade,
-                                        fIsEncrypted, fAnyUnordered,
-                                        strType, strErr);
+            bool fReadOK = ReadKeyValue(&dummyWallet, ssKey, ssValue, nFileVersion, vWalletUpgrade, fIsEncrypted, fAnyUnordered, strType, strErr);
             if (!IsKeyType(strType))
                 continue;
             if (!fReadOK)

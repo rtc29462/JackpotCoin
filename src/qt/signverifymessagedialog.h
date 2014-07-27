@@ -6,6 +6,7 @@
 namespace Ui {
     class SignVerifyMessageDialog;
 }
+
 class WalletModel;
 
 QT_BEGIN_NAMESPACE
@@ -34,13 +35,13 @@ private:
     WalletModel *model;
 
 private slots:
-    /* sign message */
+    // sign message
     void on_addressBookButton_SM_clicked();
     void on_pasteButton_SM_clicked();
     void on_signMessageButton_SM_clicked();
     void on_copySignatureButton_SM_clicked();
     void on_clearButton_SM_clicked();
-    /* verify message */
+    // verify message
     void on_addressBookButton_VM_clicked();
     void on_verifyMessageButton_VM_clicked();
     void on_clearButton_VM_clicked();

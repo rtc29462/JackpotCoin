@@ -42,20 +42,24 @@ static bool ipcScanCmd(int argc, char *argv[], bool fRelay)
     bool fSent = false;
     for (int i = 1; i < argc; i++)
     {
-        if (boost::algorithm::istarts_with(argv[i], "bitcoin:"))
+        if (boost::algorithm::istarts_with(argv[i], "jackpotcoin:"))
         {
             const char *strURI = argv[i];
             try {
                 boost::interprocess::message_queue mq(boost::interprocess::open_only, BITCOINURI_QUEUE_NAME);
                 if (mq.try_send(strURI, strlen(strURI), 0))
+                {
                     fSent = true;
+                }
                 else if (fRelay)
+                {
                     break;
+                }
             }
             catch (boost::interprocess::interprocess_exception &ex) {
                 // don't log the "file not found" exception, because that's normal for
                 // the first start of the first instance
-                if (ex.get_error_code() != boost::interprocess::not_found_error || !fRelay)
+                if ((ex.get_error_code() != boost::interprocess::not_found_error) || (!fRelay))
                 {
                     printf("main() - boost interprocess exception #%d: %s\n", ex.get_error_code(), ex.what());
                     break;
@@ -66,28 +70,36 @@ static bool ipcScanCmd(int argc, char *argv[], bool fRelay)
     return fSent;
 }
 
+
 void ipcScanRelay(int argc, char *argv[])
 {
     if (ipcScanCmd(argc, argv, true))
+    {
         exit(0);
+    }
 }
+
 
 static void ipcThread(void* pArg)
 {
     // Make this thread recognisable as the GUI-IPC thread
-    RenameThread("bitcoin-gui-ipc");
+    RenameThread("jackpotcoin-gui-ipc");
 	
     try
     {
         ipcThread2(pArg);
     }
-    catch (std::exception& e) {
+    catch (std::exception& e) 
+    {
         PrintExceptionContinue(&e, "ipcThread()");
-    } catch (...) {
+    } 
+    catch (...)
+    {
         PrintExceptionContinue(NULL, "ipcThread()");
     }
     printf("ipcThread exited\n");
 }
+
 
 static void ipcThread2(void* pArg)
 {
@@ -98,17 +110,19 @@ static void ipcThread2(void* pArg)
     size_t nSize = 0;
     unsigned int nPriority = 0;
 
-    loop
+    while (true)
     {
         ptime d = boost::posix_time::microsec_clock::universal_time() + millisec(100);
         if (mq->timed_receive(&buffer, sizeof(buffer), nSize, nPriority, d))
         {
             uiInterface.ThreadSafeHandleURI(std::string(buffer, nSize));
-            Sleep(1000);
+            MilliSleep(1000);
         }
 
         if (fShutdown)
+        {
             break;
+        }
     }
 
     // Remove message queue
@@ -116,6 +130,7 @@ static void ipcThread2(void* pArg)
     // Cleanup allocated memory
     delete mq;
 }
+
 
 void ipcInit(int argc, char *argv[])
 {
@@ -136,7 +151,9 @@ void ipcInit(int argc, char *argv[])
                 uiInterface.ThreadSafeHandleURI(std::string(buffer, nSize));
             }
             else
+            {
                 break;
+            }
         }
 
         // Make sure only one bitcoin instance is listening
@@ -145,7 +162,8 @@ void ipcInit(int argc, char *argv[])
 
         mq = new message_queue(open_or_create, BITCOINURI_QUEUE_NAME, 2, MAX_URI_LENGTH);
     }
-    catch (interprocess_exception &ex) {
+    catch (interprocess_exception &ex) 
+    {
         printf("ipcInit() - boost interprocess exception #%d: %s\n", ex.get_error_code(), ex.what());
         return;
     }

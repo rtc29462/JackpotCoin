@@ -38,8 +38,9 @@ extern void qt_mac_set_dock_menu(QMenu*);
     Q_UNUSED(event)
     Q_UNUSED(replyEvent)
 
-    if (dockIconHandler)
+    if (dockIconHandler) {
         dockIconHandler->handleDockIconClickEvent();
+    }
 }
 
 @end
@@ -70,8 +71,9 @@ void MacDockIconHandler::setIcon(const QIcon &icon)
 {
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
     NSImage *image;
-    if (icon.isNull())
+    if (icon.isNull()) {
         image = [[NSImage imageNamed:@"NSApplicationIcon"] retain];
+    }
     else {
         QSize size = icon.actualSize(QSize(128, 128));
         QPixmap pixmap = icon.pixmap(size);
@@ -88,8 +90,9 @@ void MacDockIconHandler::setIcon(const QIcon &icon)
 MacDockIconHandler *MacDockIconHandler::instance()
 {
     static MacDockIconHandler *s_instance = NULL;
-    if (!s_instance)
+    if (!s_instance) {
         s_instance = new MacDockIconHandler();
+    }
     return s_instance;
 }
 

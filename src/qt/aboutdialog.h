@@ -6,9 +6,10 @@
 namespace Ui {
     class AboutDialog;
 }
+
 class ClientModel;
 
-/** "About" dialog box */
+// "About" dialog box
 class AboutDialog : public QDialog
 {
     Q_OBJECT
@@ -23,6 +24,7 @@ private:
 
 private slots:
     void on_buttonBox_accepted();
+    
 };
 
 #endif // ABOUTDIALOG_H

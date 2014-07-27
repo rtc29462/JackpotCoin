@@ -6,11 +6,12 @@
 namespace Ui {
 class OptionsDialog;
 }
+
 class OptionsModel;
 class MonitoredDataMapper;
 class QValidatedLineEdit;
 
-/** Preferences dialog. */
+// Preferences dialog.
 class OptionsDialog : public QDialog
 {
     Q_OBJECT
@@ -26,15 +27,15 @@ protected:
     bool eventFilter(QObject *object, QEvent *event);
 
 private slots:
-    /* enable only apply button */
+    // enable only apply button
     void enableApplyButton();
-    /* disable only apply button */
+    // disable only apply button
     void disableApplyButton();
-    /* enable apply button and OK button */
+    // enable apply button and OK button
     void enableSaveButtons();
-    /* disable apply button and OK button */
+    // disable apply button and OK button
     void disableSaveButtons();
-    /* set apply button and OK button state (enabled / disabled) */
+    // set apply button and OK button state (enabled / disabled)
     void setSaveButtonState(bool fState);
     void on_okButton_clicked();
     void on_cancelButton_clicked();

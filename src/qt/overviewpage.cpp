@@ -14,9 +14,10 @@
 #include <QPainter>
 
 #define DECORATION_SIZE 64
-#define NUM_ITEMS 6
+#define NUM_ITEMS 8
 
 extern int nJackpotValue; 
+extern bool fWalletUnlockMintOnly;
 
 class TxViewDelegate : public QAbstractItemDelegate
 {
@@ -48,6 +49,7 @@ public:
         bool confirmed = index.data(TransactionTableModel::ConfirmedRole).toBool();
         QVariant value = index.data(Qt::ForegroundRole);
         QColor foreground = option.palette.color(QPalette::Text);
+            
         if(qVariantCanConvert<QColor>(value))
         {
             foreground = qvariant_cast<QColor>(value);
@@ -68,12 +70,15 @@ public:
         {
             foreground = option.palette.color(QPalette::Text);
         }
+        
         painter->setPen(foreground);
         QString amountText = BitcoinUnits::formatWithUnit(unit, amount, true);
+            
         if(!confirmed)
         {
             amountText = QString("[") + amountText + QString("]");
         }
+        
         painter->drawText(amountRect, Qt::AlignRight|Qt::AlignVCenter, amountText);
 
         painter->setPen(option.palette.color(QPalette::Text));
@@ -90,6 +95,7 @@ public:
     int unit;
 
 };
+
 #include "overviewpage.moc"
 
 OverviewPage::OverviewPage(QWidget *parent) :
@@ -121,21 +127,28 @@ OverviewPage::OverviewPage(QWidget *parent) :
     showOutOfSyncWarning(true);
 }
 
+
 void OverviewPage::handleTransactionClicked(const QModelIndex &index)
 {
-    if(filter)
+    if (filter)
+    {
         emit transactionClicked(filter->mapToSource(index));
+    }
 }
+
 
 OverviewPage::~OverviewPage()
 {
     delete ui;
 }
 
-void OverviewPage::setJackpot() {
+
+void OverviewPage::setJackpot() 
+{
      currentJackpot = (qint64) nJackpotValue;
      ui->labelCurrentJackpot->setText(QString("JackPot   ") + QString::number(nJackpotValue) + QString(" JPC"));
 }
+
 
 void OverviewPage::setBalance(qint64 balance, qint64 stake, qint64 unconfirmedBalance, qint64 immatureBalance)
 {
@@ -156,10 +169,12 @@ void OverviewPage::setBalance(qint64 balance, qint64 stake, qint64 unconfirmedBa
     ui->labelImmatureText->setVisible(showImmature);
 }
 
+
 void OverviewPage::setNumTransactions(int count)
 {
     ui->labelNumTransactions->setText(QLocale::system().toString(count));
 }
+
 
 void OverviewPage::unlockWallet()
 {
@@ -167,24 +182,18 @@ void OverviewPage::unlockWallet()
     {
         AskPassphraseDialog dlg(AskPassphraseDialog::Unlock, this);
         dlg.setModel(model);
-        if(dlg.exec() == QDialog::Accepted)
-        {
-            ui->unlockWalletButton->setText(QString("Lock wallet"));
-        }
     }
     else
     {
         model->setWalletLocked(true);
-        ui->unlockWalletButton->setText(QString("Unlock wallet"));
     }
 }
-
 
 
 void OverviewPage::setModel(WalletModel *model)
 {
     this->model = model;
-    if(model && model->getOptionsModel())
+    if (model && model->getOptionsModel())
     {
         // Set up transaction list
         filter = new TransactionFilterProxy();
@@ -193,6 +202,7 @@ void OverviewPage::setModel(WalletModel *model)
         filter->setDynamicSortFilter(true);
         filter->setSortRole(Qt::EditRole);
         filter->sort(TransactionTableModel::Date, Qt::DescendingOrder);
+        filter->setHideInvalid(model->getOptionsModel()->getHideInvalid());
 
         ui->listTransactions->setModel(filter);
         ui->listTransactions->setModelColumn(TransactionTableModel::ToAddress);
@@ -210,25 +220,44 @@ void OverviewPage::setModel(WalletModel *model)
         connect(model, SIGNAL(nBestHeightChanged(int)), this, SLOT(setJackpot()));
 
         // Unlock wallet button
-        WalletModel::EncryptionStatus status = model->getEncryptionStatus();
-        if(status == WalletModel::Unencrypted)
-        {
-            ui->unlockWalletButton->setDisabled(true);
-        }
-        connect(ui->unlockWalletButton, SIGNAL(clicked()), this, SLOT(unlockWallet()));    
+        WalletModel::EncryptionStatus status = model->getEncryptionStatus();   
 	}
 
     // update the display unit, to not use the default
     updateDisplayUnit();
 }
 
+
+void OverviewPage::updateTransactions()
+{
+    if(model && model->getOptionsModel())
+    {
+        // Set up transaction list
+        filter = new TransactionFilterProxy();
+        filter->setSourceModel(model->getTransactionTableModel());
+        filter->setLimit(NUM_ITEMS);
+        filter->setDynamicSortFilter(true);
+        filter->setSortRole(Qt::EditRole);
+        filter->sort(TransactionTableModel::Date, Qt::DescendingOrder);
+        filter->setHideInvalid(model->getOptionsModel()->getHideInvalid());
+
+        ui->listTransactions->setModel(filter);
+        ui->listTransactions->setModelColumn(TransactionTableModel::ToAddress);
+        ui->listTransactions->update();
+    }
+
+}
+
+
 void OverviewPage::updateDisplayUnit()
 {
     if(model && model->getOptionsModel())
     {
-        if(currentBalance != -1)
+        if (currentBalance != -1)
+        {
             setBalance(currentBalance, model->getStake(), currentUnconfirmedBalance, currentImmatureBalance);
-
+        }
+        
         // Update txdelegate->unit with the current unit
         txdelegate->unit = model->getOptionsModel()->getDisplayUnit();
 

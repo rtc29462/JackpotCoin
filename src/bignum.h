@@ -2,12 +2,20 @@
 // Copyright (c) 2009-2012 The Bitcoin developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
+
 #ifndef BITCOIN_BIGNUM_H
 #define BITCOIN_BIGNUM_H
 
+#include "serialize.h"
+#include "uint256.h"
+#include "version.h"
+
+#include <openssl/bn.h>
+
 #include <stdexcept>
 #include <vector>
-#include <openssl/bn.h>
+
+#include <stdint.h>
 
 #include "util.h" // for uint64
 
@@ -96,6 +104,40 @@ public:
         BN_init(this);
         setvch(vch);
     }
+
+    /** Generates a cryptographically secure random number between zero and range exclusive
+    * i.e. 0 < returned number < range
+    * @param range The upper bound on the number.
+    * @return
+    */
+    static CBigNum  randBignum(const CBigNum& range) {
+        CBigNum ret;
+        if(!BN_rand_range(&ret, &range)){
+            throw bignum_error("CBigNum:rand element : BN_rand_range failed");
+        }
+        return ret;
+    }
+
+    /** Generates a cryptographically secure random k-bit number
+    * @param k The bit length of the number.
+    * @return
+    */
+    static CBigNum RandKBitBigum(const uint32_t k){
+        CBigNum ret;
+        if(!BN_rand(&ret, k, -1, 0)){
+            throw bignum_error("CBigNum:rand element : BN_rand failed");
+        }
+        return ret;
+    }
+
+    /**Returns the size in bits of the underlying bignum.
+     *
+     * @return the size
+     */
+    int bitSize() const{
+        return  BN_num_bits(this);
+    }
+
 
     void setulong(unsigned long n)
     {
@@ -278,28 +320,70 @@ public:
         return vch;
     }
 
+    // The "compact" format is a representation of a whole
+    // number N using an unsigned 32bit number similar to a
+    // floating point format.
+    // The most significant 8 bits are the unsigned exponent of base 256.
+    // This exponent can be thought of as "number of bytes of N".
+    // The lower 23 bits are the mantissa.
+    // Bit number 24 (0x800000) represents the sign of N.
+    // N = (-1^sign) * mantissa * 256^(exponent-3)
+    //
+    // Satoshi's original implementation used BN_bn2mpi() and BN_mpi2bn().
+    // MPI uses the most significant bit of the first byte as sign.
+    // Thus 0x1234560000 is compact (0x05123456)
+    // and  0xc0de000000 is compact (0x0600c0de)
+    // (0x05c0de00) would be -0x40de000000
+    //
+    // Bitcoin only uses this "compact" format for encoding difficulty
+    // targets, which are unsigned 256bit quantities.  Thus, all the
+    // complexities of the sign bit and using base 256 are probably an
+    // implementation accident.
+    //
+    // This implementation directly uses shifts instead of going
+    // through an intermediate MPI representation.
     CBigNum& SetCompact(unsigned int nCompact)
     {
         unsigned int nSize = nCompact >> 24;
-        std::vector<unsigned char> vch(4 + nSize);
-        vch[3] = nSize;
-        if (nSize >= 1) vch[4] = (nCompact >> 16) & 0xff;
-        if (nSize >= 2) vch[5] = (nCompact >> 8) & 0xff;
-        if (nSize >= 3) vch[6] = (nCompact >> 0) & 0xff;
-        BN_mpi2bn(&vch[0], vch.size(), this);
+        bool fNegative     =(nCompact & 0x00800000) != 0;
+        unsigned int nWord = nCompact & 0x007fffff;
+        if (nSize <= 3)
+        {
+            nWord >>= 8 * (3 - nSize);
+            BN_set_word(this, nWord);
+        }
+        else
+        {
+            BN_set_word(this, nWord);
+            BN_lshift(this, this, 8 * (nSize - 3));
+        }
+        BN_set_negative(this, fNegative);
         return *this;
     }
 
     unsigned int GetCompact() const
     {
-        unsigned int nSize = BN_bn2mpi(this, NULL);
-        std::vector<unsigned char> vch(nSize);
-        nSize -= 4;
-        BN_bn2mpi(this, &vch[0]);
-        unsigned int nCompact = nSize << 24;
-        if (nSize >= 1) nCompact |= (vch[4] << 16);
-        if (nSize >= 2) nCompact |= (vch[5] << 8);
-        if (nSize >= 3) nCompact |= (vch[6] << 0);
+        unsigned int nSize = BN_num_bytes(this);
+        unsigned int nCompact = 0;
+        if (nSize <= 3)
+        {
+            nCompact = BN_get_word(this) << 8 * (3 - nSize);
+        }
+        else
+        {
+            CBigNum bn;
+            BN_rshift(&bn, this, 8 * (nSize - 3));
+            nCompact = BN_get_word(&bn);
+        }
+        // The 0x00800000 bit denotes the sign.
+        // Thus, if it is already set, divide the mantissa by 256 and increase the exponent.
+        if (nCompact & 0x00800000)
+        {
+            nCompact >>= 8;
+            nSize++;
+        }
+        nCompact |= nSize << 24;
+        nCompact |= (BN_is_negative(this) ? 0x00800000 : 0);
         return nCompact;
     }
 
@@ -381,6 +465,122 @@ public:
         std::vector<unsigned char> vch;
         ::Unserialize(s, vch, nType, nVersion);
         setvch(vch);
+    }
+
+    /**
+    * exponentiation with an int. this^e
+    * @param e the exponent as an int
+    * @return
+    */
+    CBigNum pow(const int e) const {
+        return this->pow(CBigNum(e));
+    }
+
+    /**
+     * exponentiation this^e
+     * @param e the exponent
+     * @return
+     */
+    CBigNum pow(const CBigNum& e) const {
+        CAutoBN_CTX pctx;
+        CBigNum ret;
+        if (!BN_exp(&ret, this, &e, pctx))
+            throw bignum_error("CBigNum::pow : BN_exp failed");
+        return ret;
+    }
+
+    /**
+     * modular multiplication: (this * b) mod m
+     * @param b operand
+     * @param m modulus
+     */
+    CBigNum mul_mod(const CBigNum& b, const CBigNum& m) const {
+        CAutoBN_CTX pctx;
+        CBigNum ret;
+        if (!BN_mod_mul(&ret, this, &b, &m, pctx))
+            throw bignum_error("CBigNum::mul_mod : BN_mod_mul failed");
+        
+        return ret;
+    }
+
+    /**
+     * modular exponentiation: this^e mod n
+     * @param e exponent
+     * @param m modulus
+     */
+    CBigNum pow_mod(const CBigNum& e, const CBigNum& m) const {
+        CAutoBN_CTX pctx;
+        CBigNum ret;
+        if( e < 0){
+            // g^-x = (g^-1)^x
+            CBigNum inv = this->inverse(m);
+            CBigNum posE = e * -1;
+            if (!BN_mod_exp(&ret, &inv, &posE, &m, pctx))
+                throw bignum_error("CBigNum::pow_mod: BN_mod_exp failed on negative exponent");
+        }else
+            if (!BN_mod_exp(&ret, this, &e, &m, pctx))
+                throw bignum_error("CBigNum::pow_mod : BN_mod_exp failed");
+
+        return ret;
+    }
+
+    /**
+    * Calculates the inverse of this element mod m.
+    * i.e. i such this*i = 1 mod m
+    * @param m the modu
+    * @return the inverse
+    */
+    CBigNum inverse(const CBigNum& m) const {
+        CAutoBN_CTX pctx;
+        CBigNum ret;
+        if (!BN_mod_inverse(&ret, this, &m, pctx))
+            throw bignum_error("CBigNum::inverse*= :BN_mod_inverse");
+        return ret;
+    }
+
+    /**
+     * Generates a random (safe) prime of numBits bits
+     * @param numBits the number of bits
+     * @param safe true for a safe prime
+     * @return the prime
+     */
+    static CBigNum generatePrime(const unsigned int numBits, bool safe = false) {
+        CBigNum ret;
+        if(!BN_generate_prime_ex(&ret, numBits, (safe == true), NULL, NULL, NULL))
+            throw bignum_error("CBigNum::generatePrime*= :BN_generate_prime_ex");
+        return ret;
+    }
+
+    /**
+     * Calculates the greatest common divisor (GCD) of two numbers.
+     * @param m the second element
+     * @return the GCD
+     */
+    CBigNum gcd( const CBigNum& b) const{
+        CAutoBN_CTX pctx;
+        CBigNum ret;
+        if (!BN_gcd(&ret, this, &b, pctx))
+            throw bignum_error("CBigNum::gcd*= :BN_gcd");
+        return ret;
+    }
+
+    /**
+    * Miller-Rabin primality test on this element
+    * @param checks: optional, the number of Miller-Rabin tests to run
+    * default causes error rate of 2^-80.
+    * @return true if prime
+    */
+    bool isPrime(const int checks=BN_prime_checks) const {
+        CAutoBN_CTX pctx;
+        int ret = BN_is_prime(this, checks, NULL, pctx, NULL);
+        if(ret < 0){
+            throw bignum_error("CBigNum::isPrime :BN_is_prime");
+        }
+        return ret;
+    }
+
+    bool isOne() const {
+        return BN_is_one(this);
     }
 
 
@@ -485,6 +685,8 @@ public:
     friend inline const CBigNum operator-(const CBigNum& a, const CBigNum& b);
     friend inline const CBigNum operator/(const CBigNum& a, const CBigNum& b);
     friend inline const CBigNum operator%(const CBigNum& a, const CBigNum& b);
+    friend inline const CBigNum operator*(const CBigNum& a, const CBigNum& b);
+    friend inline bool operator<(const CBigNum& a, const CBigNum& b);
 };
 
 
@@ -560,5 +762,9 @@ inline bool operator<=(const CBigNum& a, const CBigNum& b) { return (BN_cmp(&a, 
 inline bool operator>=(const CBigNum& a, const CBigNum& b) { return (BN_cmp(&a, &b) >= 0); }
 inline bool operator<(const CBigNum& a, const CBigNum& b)  { return (BN_cmp(&a, &b) < 0); }
 inline bool operator>(const CBigNum& a, const CBigNum& b)  { return (BN_cmp(&a, &b) > 0); }
+
+inline std::ostream& operator<<(std::ostream &strm, const CBigNum &b) { return strm << b.ToString(10); }
+
+typedef  CBigNum Bignum;
 
 #endif

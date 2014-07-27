@@ -34,14 +34,14 @@ Notificator::Notificator(const QString &programName, QSystemTrayIcon *trayicon, 
     ,interface(0)
 #endif
 {
-    if(trayicon && trayicon->supportsMessages())
+    if (trayicon && trayicon->supportsMessages())
     {
         mode = QSystemTray;
     }
 #ifdef USE_DBUS
     interface = new QDBusInterface("org.freedesktop.Notifications",
           "/org/freedesktop/Notifications", "org.freedesktop.Notifications");
-    if(interface->isValid())
+    if (interface->isValid())
     {
         mode = Freedesktop;
     }
@@ -64,12 +64,14 @@ Notificator::Notificator(const QString &programName, QSystemTrayIcon *trayicon, 
 #endif
 }
 
+
 Notificator::~Notificator()
 {
 #ifdef USE_DBUS
     delete interface;
 #endif
 }
+
 
 #ifdef USE_DBUS
 
@@ -113,12 +115,12 @@ FreedesktopImage::FreedesktopImage(const QImage &img):
 {
     // Convert 00xAARRGGBB to RGBA bytewise (endian-independent) format
     QImage tmp = img.convertToFormat(QImage::Format_ARGB32);
-    const uint32_t *data = reinterpret_cast<const uint32_t*>(tmp.constBits());
+    const uint32_t *data = reinterpret_cast<const uint32_t*>(tmp.bits());
 
     unsigned int num_pixels = width * height;
     image.resize(num_pixels * BYTES_PER_PIXEL);
 
-    for(unsigned int ptr = 0; ptr < num_pixels; ++ptr)
+    for (unsigned int ptr = 0; ptr < num_pixels; ++ptr)
     {
         image[ptr*BYTES_PER_PIXEL+0] = data[ptr] >> 16; // R
         image[ptr*BYTES_PER_PIXEL+1] = data[ptr] >> 8;  // G
@@ -126,6 +128,7 @@ FreedesktopImage::FreedesktopImage(const QImage &img):
         image[ptr*BYTES_PER_PIXEL+3] = data[ptr] >> 24; // A
     }
 }
+
 
 QDBusArgument &operator<<(QDBusArgument &a, const FreedesktopImage &i)
 {
@@ -135,6 +138,7 @@ QDBusArgument &operator<<(QDBusArgument &a, const FreedesktopImage &i)
     return a;
 }
 
+
 const QDBusArgument &operator>>(const QDBusArgument &a, FreedesktopImage &i)
 {
     a.beginStructure();
@@ -143,16 +147,19 @@ const QDBusArgument &operator>>(const QDBusArgument &a, FreedesktopImage &i)
     return a;
 }
 
+
 int FreedesktopImage::metaType()
 {
     return qDBusRegisterMetaType<FreedesktopImage>();
 }
+
 
 QVariant FreedesktopImage::toVariant(const QImage &img)
 {
     FreedesktopImage fimg(img);
     return QVariant(FreedesktopImage::metaType(), &fimg);
 }
+
 
 void Notificator::notifyDBus(Class cls, const QString &title, const QString &text, const QIcon &icon, int millisTimeout)
 {
@@ -184,15 +191,22 @@ void Notificator::notifyDBus(Class cls, const QString &title, const QString &tex
 
     // If no icon specified, set icon based on class
     QIcon tmpicon;
-    if(icon.isNull())
+    if (icon.isNull())
     {
         QStyle::StandardPixmap sicon = QStyle::SP_MessageBoxQuestion;
-        switch(cls)
+        switch (cls)
         {
-        case Information: sicon = QStyle::SP_MessageBoxInformation; break;
-        case Warning: sicon = QStyle::SP_MessageBoxWarning; break;
-        case Critical: sicon = QStyle::SP_MessageBoxCritical; break;
-        default: break;
+          case Information: 
+               sicon = QStyle::SP_MessageBoxInformation; 
+               break;
+          case Warning: 
+               sicon = QStyle::SP_MessageBoxWarning; 
+               break;
+          case Critical: 
+               sicon = QStyle::SP_MessageBoxCritical; 
+               break;
+          default: 
+               break;
         }
         tmpicon = QApplication::style()->standardIcon(sicon);
     }
@@ -211,15 +225,22 @@ void Notificator::notifyDBus(Class cls, const QString &title, const QString &tex
 }
 #endif
 
+
 void Notificator::notifySystray(Class cls, const QString &title, const QString &text, const QIcon &icon, int millisTimeout)
 {
     Q_UNUSED(icon);
     QSystemTrayIcon::MessageIcon sicon = QSystemTrayIcon::NoIcon;
-    switch(cls) // Set icon based on class
+    switch (cls) // Set icon based on class
     {
-    case Information: sicon = QSystemTrayIcon::Information; break;
-    case Warning: sicon = QSystemTrayIcon::Warning; break;
-    case Critical: sicon = QSystemTrayIcon::Critical; break;
+      case Information: 
+           sicon = QSystemTrayIcon::Information; 
+           break;
+      case Warning: 
+           sicon = QSystemTrayIcon::Warning; 
+           break;
+      case Critical: 
+           sicon = QSystemTrayIcon::Critical; 
+           break;
     }
     trayIcon->showMessage(title, text, sicon, millisTimeout);
 }
@@ -239,10 +260,14 @@ void Notificator::notifyGrowl(Class cls, const QString &title, const QString &te
 
     QString notificationApp(QApplication::applicationName());
     if (notificationApp.isEmpty())
+    {
         notificationApp = "Application";
-
+    }
+    
     QPixmap notificationIconPixmap;
-    if (icon.isNull()) { // If no icon specified, set icon based on class
+    if (icon.isNull()) 
+    { 
+        // If no icon specified, set icon based on class
         QStyle::StandardPixmap sicon = QStyle::SP_MessageBoxQuestion;
         switch (cls)
         {
@@ -252,17 +277,21 @@ void Notificator::notifyGrowl(Class cls, const QString &title, const QString &te
         }
         notificationIconPixmap = QApplication::style()->standardPixmap(sicon);
     }
-    else {
+    else
+    {
         QSize size = icon.actualSize(QSize(48, 48));
         notificationIconPixmap = icon.pixmap(size);
     }
 
     QString notificationIcon;
     QTemporaryFile notificationIconFile;
-    if (!notificationIconPixmap.isNull() && notificationIconFile.open()) {
+    if (!notificationIconPixmap.isNull() && notificationIconFile.open()) 
+    {
         QImageWriter writer(&notificationIconFile, "PNG");
         if (writer.write(notificationIconPixmap.toImage()))
+        {
             notificationIcon = QString(" image from location \"file://%1\"").arg(notificationIconFile.fileName());
+        }
     }
 
     QString quotedTitle(title), quotedText(text);
@@ -273,30 +302,31 @@ void Notificator::notifyGrowl(Class cls, const QString &title, const QString &te
 }
 #endif
 
+
 void Notificator::notify(Class cls, const QString &title, const QString &text, const QIcon &icon, int millisTimeout)
 {
-    switch(mode)
+    switch (mode)
     {
 #ifdef USE_DBUS
-    case Freedesktop:
-        notifyDBus(cls, title, text, icon, millisTimeout);
-        break;
+      case Freedesktop:
+           notifyDBus(cls, title, text, icon, millisTimeout);
+           break;
 #endif
-    case QSystemTray:
-        notifySystray(cls, title, text, icon, millisTimeout);
-        break;
+      case QSystemTray:
+           notifySystray(cls, title, text, icon, millisTimeout);
+           break;
 #ifdef Q_OS_MAC
-    case Growl12:
-    case Growl13:
-        notifyGrowl(cls, title, text, icon);
-        break;
+      case Growl12:
+      case Growl13:
+           notifyGrowl(cls, title, text, icon);
+           break;
 #endif
-    default:
-        if(cls == Critical)
-        {
-            // Fall back to old fashioned pop-up dialog if critical and no other notification available
-            QMessageBox::critical(parent, title, text, QMessageBox::Ok, QMessageBox::Ok);
-        }
-        break;
+      default:
+           if (cls == Critical)
+           {
+               // Fall back to old fashioned pop-up dialog if critical and no other notification available
+               QMessageBox::critical(parent, title, text, QMessageBox::Ok, QMessageBox::Ok);
+           }
+           break;
     }
 }

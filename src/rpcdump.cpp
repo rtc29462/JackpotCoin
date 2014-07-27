@@ -14,6 +14,8 @@
 using namespace json_spirit;
 using namespace std;
 
+void EnsureWalletIsUnlocked();
+
 class CTxDump
 {
 public:
@@ -70,6 +72,7 @@ Value importprivkey(const Array& params, bool fHelp)
 
     return Value::null;
 }
+
 
 Value dumpprivkey(const Array& params, bool fHelp)
 {

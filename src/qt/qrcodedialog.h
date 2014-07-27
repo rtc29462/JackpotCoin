@@ -7,6 +7,7 @@
 namespace Ui {
     class QRCodeDialog;
 }
+
 class OptionsModel;
 
 class QRCodeDialog : public QDialog
@@ -25,7 +26,7 @@ private slots:
     void on_lnMessage_textChanged();
     void on_btnSaveAs_clicked();
     void on_chkReqPayment_toggled(bool fChecked);
-
+    
     void updateDisplayUnit();
 
 private:
@@ -33,9 +34,10 @@ private:
     OptionsModel *model;
     QString address;
     QImage myImage;
-
+    
     void genCode();
     QString getURI();
+    
 };
 
 #endif // QRCODEDIALOG_H

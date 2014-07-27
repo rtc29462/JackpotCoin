@@ -1,5 +1,6 @@
 #include "transactionfilterproxy.h"
 #include "transactiontablemodel.h"
+#include "transactionrecord.h"
 
 #include <QDateTime>
 
@@ -17,10 +18,11 @@ TransactionFilterProxy::TransactionFilterProxy(QObject *parent) :
     addrPrefix(),
     typeFilter(ALL_TYPES),
     minAmount(0),
-    minConfirm(1),
-    limitRows(-1)
+    limitRows(-1),
+    hideInvalid(true)
 {
 }
+
 
 bool TransactionFilterProxy::filterAcceptsRow(int sourceRow, const QModelIndex &sourceParent) const
 {
@@ -31,21 +33,33 @@ bool TransactionFilterProxy::filterAcceptsRow(int sourceRow, const QModelIndex &
     QString address = index.data(TransactionTableModel::AddressRole).toString();
     QString label = index.data(TransactionTableModel::LabelRole).toString();
     qint64 amount = llabs(index.data(TransactionTableModel::AmountRole).toLongLong());
-    qint64 confirms = index.data(TransactionTableModel::ConfirmedDepth).toLongLong();
+    int status = index.data(TransactionTableModel::StatusRole).toInt();
 
-    if (confirms < minConfirm)
+    if (hideInvalid) {
+       if ((status == TransactionStatus::Conflicted) || (status == TransactionStatus::NotAccepted))
+       {
+            return false;
+       }
+    }
+    if (!(TYPE(type) & typeFilter))
+    {
         return false;
-    if(!(TYPE(type) & typeFilter))
+    }
+    if ((datetime < dateFrom) || (datetime > dateTo)) 
+    {
         return false;
-    if(datetime < dateFrom || datetime > dateTo)
-        return false;
+    }
     if (!address.contains(addrPrefix, Qt::CaseInsensitive) && !label.contains(addrPrefix, Qt::CaseInsensitive))
+    {
         return false;
-    if(amount < minAmount)
+    }
+    if (amount < minAmount)
+    {
         return false;
-
+    }
     return true;
 }
+
 
 void TransactionFilterProxy::setDateRange(const QDateTime &from, const QDateTime &to)
 {
@@ -54,11 +68,13 @@ void TransactionFilterProxy::setDateRange(const QDateTime &from, const QDateTime
     invalidateFilter();
 }
 
+
 void TransactionFilterProxy::setAddressPrefix(const QString &addrPrefix)
 {
     this->addrPrefix = addrPrefix;
     invalidateFilter();
 }
+
 
 void TransactionFilterProxy::setTypeFilter(quint32 modes)
 {
@@ -66,11 +82,13 @@ void TransactionFilterProxy::setTypeFilter(quint32 modes)
     invalidateFilter();
 }
 
-void TransactionFilterProxy::setMinConfirm(qint64 minimum)
+
+void TransactionFilterProxy::setHideInvalid(bool hideInvalid)
 {
-    this->minConfirm = minimum;
+    this->hideInvalid = hideInvalid;
     invalidateFilter();
 }
+
 
 void TransactionFilterProxy::setMinAmount(qint64 minimum)
 {
@@ -78,14 +96,16 @@ void TransactionFilterProxy::setMinAmount(qint64 minimum)
     invalidateFilter();
 }
 
+
 void TransactionFilterProxy::setLimit(int limit)
 {
     this->limitRows = limit;
 }
 
+
 int TransactionFilterProxy::rowCount(const QModelIndex &parent) const
 {
-    if(limitRows != -1)
+    if (limitRows != -1)
     {
         return std::min(QSortFilterProxyModel::rowCount(parent), limitRows);
     }

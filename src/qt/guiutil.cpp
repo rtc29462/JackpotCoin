@@ -5,13 +5,16 @@
 #include "util.h"
 #include "init.h"
 
-#include <QString>
 #include <QDateTime>
 #include <QDoubleValidator>
 #include <QFont>
 #include <QLineEdit>
+#if QT_VERSION >= 0x050000
+#include <QUrlQuery>
+#else
 #include <QUrl>
-#include <QTextDocument> // For Qt::escape
+#endif
+#include <QTextDocument>
 #include <QAbstractItemView>
 #include <QApplication>
 #include <QClipboard>
@@ -42,15 +45,18 @@
 
 namespace GUIUtil {
 
+
 QString dateTimeStr(const QDateTime &date)
 {
     return date.date().toString(Qt::SystemLocaleShortDate) + QString(" ") + date.toString("hh:mm");
 }
 
+
 QString dateTimeStr(qint64 nTime)
 {
     return dateTimeStr(QDateTime::fromTime_t((qint32)nTime));
 }
+
 
 QFont bitcoinAddressFont()
 {
@@ -59,12 +65,14 @@ QFont bitcoinAddressFont()
     return font;
 }
 
+
 void setupAddressWidget(QLineEdit *widget, QWidget *parent)
 {
     widget->setMaxLength(BitcoinAddressValidator::MaxAddressLength);
     widget->setValidator(new BitcoinAddressValidator(parent));
     widget->setFont(bitcoinAddressFont());
 }
+
 
 void setupAmountWidget(QLineEdit *widget, QWidget *parent)
 {
@@ -75,15 +83,25 @@ void setupAmountWidget(QLineEdit *widget, QWidget *parent)
     widget->setAlignment(Qt::AlignRight|Qt::AlignVCenter);
 }
 
+
 bool parseBitcoinURI(const QUrl &uri, SendCoinsRecipient *out)
 {
-    if(uri.scheme() != QString("bitcoin"))
+    // return if URI is not valid or is no bitcoin URI
+    if (!uri.isValid() || (uri.scheme() != QString("jackpotcoin")))
+    {
         return false;
-
+    }
+     
     SendCoinsRecipient rv;
     rv.address = uri.path();
     rv.amount = 0;
+
+#if QT_VERSION < 0x050000
     QList<QPair<QString, QString> > items = uri.queryItems();
+#else
+    QUrlQuery uriQuery(uri);
+    QList<QPair<QString, QString> > items = uriQuery.queryItems();
+#endif
     for (QList<QPair<QString, QString> >::iterator i = items.begin(); i != items.end(); i++)
     {
         bool fShouldReturnFalse = false;
@@ -100,67 +118,91 @@ bool parseBitcoinURI(const QUrl &uri, SendCoinsRecipient *out)
         }
         else if (i->first == "amount")
         {
-            if(!i->second.isEmpty())
+            if (!i->second.isEmpty())
             {
-                if(!BitcoinUnits::parse(BitcoinUnits::BTC, i->second, &rv.amount))
+                if (!BitcoinUnits::parse(BitcoinUnits::BTC, i->second, &rv.amount))
                 {
                     return false;
                 }
             }
             fShouldReturnFalse = false;
         }
-
+        
         if (fShouldReturnFalse)
+        {
             return false;
+        }
     }
-    if(out)
+    
+    if (out)
     {
         *out = rv;
     }
     return true;
 }
 
+
 bool parseBitcoinURI(QString uri, SendCoinsRecipient *out)
 {
-    // Convert bitcoin:// to bitcoin:
+    // Convert jackpotcoin:// to jackpotcoin:
     //
     //    Cannot handle this later, because bitcoin:// will cause Qt to see the part after // as host,
     //    which will lower-case it (and thus invalidate the address).
-    if(uri.startsWith("bitcoin://"))
+    if (uri.startsWith("jackpotcoin://"))
     {
-        uri.replace(0, 10, "bitcoin:");
+        uri.replace(0, 14, "jackpotcoin:");
     }
     QUrl uriInstance(uri);
     return parseBitcoinURI(uriInstance, out);
 }
 
+
 QString HtmlEscape(const QString& str, bool fMultiLine)
 {
+#if QT_VERSION < 0x050000
     QString escaped = Qt::escape(str);
-    if(fMultiLine)
+#else
+    QString escaped = str.toHtmlEscaped();
+#endif
+    if (fMultiLine)
     {
         escaped = escaped.replace("\n", "<br>\n");
     }
     return escaped;
 }
 
+
 QString HtmlEscape(const std::string& str, bool fMultiLine)
 {
     return HtmlEscape(QString::fromStdString(str), fMultiLine);
 }
 
+
 void copyEntryData(QAbstractItemView *view, int column, int role)
 {
-    if(!view || !view->selectionModel())
+    if (!view || !view->selectionModel())
+    {
         return;
+    }
+    
     QModelIndexList selection = view->selectionModel()->selectedRows(column);
 
-    if(!selection.isEmpty())
+    if (!selection.isEmpty())
     {
-        // Copy first item
-        QApplication::clipboard()->setText(selection.at(0).data(role).toString());
+        // Copy first item (global clipboard)
+        QApplication::clipboard()->setText(selection.at(0).data(role).toString(), QClipboard::Clipboard);
+        // Copy first item (global mouse selection for e.g. X11 - NOP on Windows)
+        QApplication::clipboard()->setText(selection.at(0).data(role).toString(), QClipboard::Selection);
     }
 }
+
+
+void setClipboard(const QString& str)
+{
+    QApplication::clipboard()->setText(str, QClipboard::Clipboard);
+    QApplication::clipboard()->setText(str, QClipboard::Selection);
+}
+
 
 QString getSaveFileName(QWidget *parent, const QString &caption,
                                  const QString &dir,
@@ -169,9 +211,14 @@ QString getSaveFileName(QWidget *parent, const QString &caption,
 {
     QString selectedFilter;
     QString myDir;
-    if(dir.isEmpty()) // Default to user documents location
+    // Default to user documents location
+    if (dir.isEmpty()) 
     {
+#if QT_VERSION < 0x050000
         myDir = QDesktopServices::storageLocation(QDesktopServices::DocumentsLocation);
+#else
+        myDir = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
+#endif
     }
     else
     {
@@ -182,35 +229,38 @@ QString getSaveFileName(QWidget *parent, const QString &caption,
     /* Extract first suffix from filter pattern "Description (*.foo)" or "Description (*.foo *.bar ...) */
     QRegExp filter_re(".* \\(\\*\\.(.*)[ \\)]");
     QString selectedSuffix;
-    if(filter_re.exactMatch(selectedFilter))
+    if (filter_re.exactMatch(selectedFilter))
     {
         selectedSuffix = filter_re.cap(1);
     }
 
     /* Add suffix if needed */
     QFileInfo info(result);
-    if(!result.isEmpty())
+    if (!result.isEmpty())
     {
-        if(info.suffix().isEmpty() && !selectedSuffix.isEmpty())
+        if (info.suffix().isEmpty() && !selectedSuffix.isEmpty())
         {
             /* No suffix specified, add selected suffix */
-            if(!result.endsWith("."))
+            if (!result.endsWith("."))
+            {
                 result.append(".");
+            }
             result.append(selectedSuffix);
         }
     }
 
     /* Return selected suffix if asked to */
-    if(selectedSuffixOut)
+    if (selectedSuffixOut)
     {
         *selectedSuffixOut = selectedSuffix;
     }
     return result;
 }
 
+
 Qt::ConnectionType blockingGUIThreadConnection()
 {
-    if(QThread::currentThread() != QCoreApplication::instance()->thread())
+    if (QThread::currentThread() != QCoreApplication::instance()->thread())
     {
         return Qt::BlockingQueuedConnection;
     }
@@ -220,12 +270,17 @@ Qt::ConnectionType blockingGUIThreadConnection()
     }
 }
 
+
 bool checkPoint(const QPoint &p, const QWidget *w)
 {
     QWidget *atW = qApp->widgetAt(w->mapToGlobal(p));
-    if (!atW) return false;
-    return atW->topLevelWidget() == w;
+    if (!atW) 
+    {
+        return false;
+    }
+    return (atW->topLevelWidget() == w);
 }
+
 
 bool isObscured(QWidget *w)
 {
@@ -236,14 +291,18 @@ bool isObscured(QWidget *w)
         && checkPoint(QPoint(w->width() / 2, w->height() / 2), w));
 }
 
+
 void openDebugLogfile()
 {
     boost::filesystem::path pathDebug = GetDataDir() / "debug.log";
 
     /* Open debug.log with the associated application */
     if (boost::filesystem::exists(pathDebug))
+    {
         QDesktopServices::openUrl(QUrl::fromLocalFile(QString::fromStdString(pathDebug.string())));
+    }
 }
+
 
 ToolTipToRichTextFilter::ToolTipToRichTextFilter(int size_threshold, QObject *parent) :
     QObject(parent), size_threshold(size_threshold)
@@ -251,17 +310,18 @@ ToolTipToRichTextFilter::ToolTipToRichTextFilter(int size_threshold, QObject *pa
 
 }
 
+
 bool ToolTipToRichTextFilter::eventFilter(QObject *obj, QEvent *evt)
 {
-    if(evt->type() == QEvent::ToolTipChange)
+    if (evt->type() == QEvent::ToolTipChange)
     {
         QWidget *widget = static_cast<QWidget*>(obj);
         QString tooltip = widget->toolTip();
-        if(tooltip.size() > size_threshold && !tooltip.startsWith("<qt/>") && !Qt::mightBeRichText(tooltip))
+        if ((tooltip.size() > size_threshold) && !tooltip.startsWith("<qt") && !Qt::mightBeRichText(tooltip))
         {
-            // Prefix <qt/> to make sure Qt detects this as rich text
+            // Envelop with <qt></qt> to make sure Qt detects this as rich text
             // Escape the current message as HTML and replace \n by <br>
-            tooltip = "<qt/>" + HtmlEscape(tooltip, true);
+            tooltip = "<qt>" + HtmlEscape(tooltip, true) + "</qt>";
             widget->setToolTip(tooltip);
             return true;
         }
@@ -269,17 +329,20 @@ bool ToolTipToRichTextFilter::eventFilter(QObject *obj, QEvent *evt)
     return QObject::eventFilter(obj, evt);
 }
 
+
 #ifdef WIN32
 boost::filesystem::path static StartupShortcutPath()
 {
     return GetSpecialFolderPath(CSIDL_STARTUP) / "JackpotCoin.lnk";
 }
 
+
 bool GetStartOnSystemStartup()
 {
     // check for Bitcoin.lnk
     return boost::filesystem::exists(StartupShortcutPath());
 }
+
 
 bool SetStartOnSystemStartup(bool fAutoStart)
 {
@@ -346,52 +409,69 @@ boost::filesystem::path static GetAutostartDir()
     namespace fs = boost::filesystem;
 
     char* pszConfigHome = getenv("XDG_CONFIG_HOME");
-    if (pszConfigHome) return fs::path(pszConfigHome) / "autostart";
+    if (pszConfigHome)
+    { 
+        return fs::path(pszConfigHome) / "autostart";
+    }
     char* pszHome = getenv("HOME");
-    if (pszHome) return fs::path(pszHome) / ".config" / "autostart";
+    if (pszHome) 
+    { 
+        return fs::path(pszHome) / ".config" / "autostart";
+    }
     return fs::path();
 }
+
 
 boost::filesystem::path static GetAutostartFilePath()
 {
     return GetAutostartDir() / "JackpotCoin.desktop";
 }
 
+
 bool GetStartOnSystemStartup()
 {
     boost::filesystem::ifstream optionFile(GetAutostartFilePath());
     if (!optionFile.good())
+    {
         return false;
+    }
     // Scan through file for "Hidden=true":
     std::string line;
     while (!optionFile.eof())
     {
         getline(optionFile, line);
-        if (line.find("Hidden") != std::string::npos &&
-            line.find("true") != std::string::npos)
+        if ((line.find("Hidden") != std::string::npos) && (line.find("true") != std::string::npos))
+        {
             return false;
+        }
     }
     optionFile.close();
 
     return true;
 }
 
+
 bool SetStartOnSystemStartup(bool fAutoStart)
 {
     if (!fAutoStart)
+    {
         boost::filesystem::remove(GetAutostartFilePath());
+    }
     else
     {
         char pszExePath[MAX_PATH+1];
         memset(pszExePath, 0, sizeof(pszExePath));
         if (readlink("/proc/self/exe", pszExePath, sizeof(pszExePath)-1) == -1)
+        {
             return false;
-
+        }
+        
         boost::filesystem::create_directories(GetAutostartDir());
-
         boost::filesystem::ofstream optionFile(GetAutostartFilePath(), std::ios_base::out|std::ios_base::trunc);
         if (!optionFile.good())
+        {
             return false;
+        }
         // Write a bitcoin.desktop file to the autostart directory:
         optionFile << "[Desktop Entry]\n";
         optionFile << "Type=Application\n";
@@ -403,10 +483,68 @@ bool SetStartOnSystemStartup(bool fAutoStart)
     }
     return true;
 }
-#else
 
-// TODO: OSX startup stuff; see:
-// https://developer.apple.com/library/mac/#documentation/MacOSX/Conceptual/BPSystemStartup/Articles/CustomLogin.html
+
+#elif defined(Q_OS_MAC)
+// based on: https://github.com/Mozketo/LaunchAtLoginController/blob/master/LaunchAtLoginController.m
+
+#include <CoreFoundation/CoreFoundation.h>
+#include <CoreServices/CoreServices.h>
+
+LSSharedFileListItemRef findStartupItemInList(LSSharedFileListRef list, CFURLRef findUrl);
+LSSharedFileListItemRef findStartupItemInList(LSSharedFileListRef list, CFURLRef findUrl)
+{
+    // loop through the list of startup items and try to find the bitcoin app
+    CFArrayRef listSnapshot = LSSharedFileListCopySnapshot(list, NULL);
+    for (int i = 0; i < CFArrayGetCount(listSnapshot); i++) 
+    {
+        LSSharedFileListItemRef item = (LSSharedFileListItemRef)CFArrayGetValueAtIndex(listSnapshot, i);
+        UInt32 resolutionFlags = kLSSharedFileListNoUserInteraction | kLSSharedFileListDoNotMountVolumes;
+        CFURLRef currentItemURL = NULL;
+        LSSharedFileListItemResolve(item, resolutionFlags, &currentItemURL, NULL);
+        if (currentItemURL && CFEqual(currentItemURL, findUrl)) 
+        {
+            // found
+            CFRelease(currentItemURL);
+            return item;
+        }
+        if(currentItemURL) 
+        {
+            CFRelease(currentItemURL);
+        }
+    }
+    return NULL;
+}
+
+
+bool GetStartOnSystemStartup()
+{
+    CFURLRef bitcoinAppUrl = CFBundleCopyBundleURL(CFBundleGetMainBundle());
+    LSSharedFileListRef loginItems = LSSharedFileListCreate(NULL, kLSSharedFileListSessionLoginItems, NULL);
+    LSSharedFileListItemRef foundItem = findStartupItemInList(loginItems, bitcoinAppUrl);
+    return !!foundItem; // return boolified object
+}
+
+
+bool SetStartOnSystemStartup(bool fAutoStart)
+{
+    CFURLRef bitcoinAppUrl = CFBundleCopyBundleURL(CFBundleGetMainBundle());
+    LSSharedFileListRef loginItems = LSSharedFileListCreate(NULL, kLSSharedFileListSessionLoginItems, NULL);
+    LSSharedFileListItemRef foundItem = findStartupItemInList(loginItems, bitcoinAppUrl);
+
+    if (fAutoStart && !foundItem) 
+    {
+        // add bitcoin app to startup item list
+        LSSharedFileListInsertItemURL(loginItems, kLSSharedFileListItemBeforeFirst, NULL, NULL, bitcoinAppUrl, NULL, NULL);
+    }
+    else if(!fAutoStart && foundItem) 
+    {
+        // remove item
+        LSSharedFileListItemRemove(loginItems, foundItem);
+    }
+    return true;
+}
+#else
 
 bool GetStartOnSystemStartup() { return false; }
 bool SetStartOnSystemStartup(bool fAutoStart) { return false; }
@@ -454,4 +592,3 @@ void HelpMessageBox::showOrPrint()
 }
 
 } // namespace GUIUtil
-

@@ -24,7 +24,7 @@ QRCodeDialog::QRCodeDialog(const QString &addr, const QString &label, bool enabl
     ui->chkReqPayment->setVisible(enableReq);
     ui->lblAmount->setVisible(enableReq);
     ui->lnReqAmount->setVisible(enableReq);
-
+    
     ui->lnLabel->setText(label);
 
     ui->btnSaveAs->setEnabled(false);
@@ -42,11 +42,13 @@ void QRCodeDialog::setModel(OptionsModel *model)
     this->model = model;
 
     if (model)
+    {
         connect(model, SIGNAL(displayUnitChanged(int)), this, SLOT(updateDisplayUnit()));
-
+    }
     // update the display unit, to not use the default ("BTC")
     updateDisplayUnit();
 }
+
 
 void QRCodeDialog::genCode()
 {
@@ -81,9 +83,10 @@ void QRCodeDialog::genCode()
     }
 }
 
+
 QString QRCodeDialog::getURI()
 {
-    QString ret = QString("bitcoin:%1").arg(address);
+    QString ret = QString("jackpotcoin:%1").arg(address);
     int paramCount = 0;
 
     ui->outUri->clear();
@@ -130,36 +133,45 @@ QString QRCodeDialog::getURI()
     return ret;
 }
 
+
 void QRCodeDialog::on_lnReqAmount_textChanged()
 {
     genCode();
 }
+
 
 void QRCodeDialog::on_lnLabel_textChanged()
 {
     genCode();
 }
 
+
 void QRCodeDialog::on_lnMessage_textChanged()
 {
     genCode();
 }
 
+
 void QRCodeDialog::on_btnSaveAs_clicked()
 {
     QString fn = GUIUtil::getSaveFileName(this, tr("Save QR Code"), QString(), tr("PNG Images (*.png)"));
     if (!fn.isEmpty())
+    {
         myImage.scaled(EXPORT_IMAGE_SIZE, EXPORT_IMAGE_SIZE).save(fn);
+    }
 }
+
 
 void QRCodeDialog::on_chkReqPayment_toggled(bool fChecked)
 {
     if (!fChecked)
+    {
         // if chkReqPayment is not active, don't display lnReqAmount as invalid
         ui->lnReqAmount->setValid(true);
-
+    }
     genCode();
 }
+
 
 void QRCodeDialog::updateDisplayUnit()
 {

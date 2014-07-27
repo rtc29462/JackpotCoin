@@ -1,6 +1,5 @@
-#include "signverifymessagedialog.h"
 #include "ui_signverifymessagedialog.h"
-
+#include "signverifymessagedialog.h"
 #include "addressbookpage.h"
 #include "base58.h"
 #include "guiutil.h"
@@ -45,15 +44,18 @@ SignVerifyMessageDialog::SignVerifyMessageDialog(QWidget *parent) :
     ui->signatureIn_VM->setFont(GUIUtil::bitcoinAddressFont());
 }
 
+
 SignVerifyMessageDialog::~SignVerifyMessageDialog()
 {
     delete ui;
 }
 
+
 void SignVerifyMessageDialog::setModel(WalletModel *model)
 {
     this->model = model;
 }
+
 
 void SignVerifyMessageDialog::setAddress_SM(QString address)
 {
@@ -61,26 +63,34 @@ void SignVerifyMessageDialog::setAddress_SM(QString address)
     ui->messageIn_SM->setFocus();
 }
 
+
 void SignVerifyMessageDialog::setAddress_VM(QString address)
 {
     ui->addressIn_VM->setText(address);
     ui->messageIn_VM->setFocus();
 }
 
+
 void SignVerifyMessageDialog::showTab_SM(bool fShow)
 {
     ui->tabWidget->setCurrentIndex(0);
 
     if (fShow)
+    {
         this->show();
+    }
 }
+
 
 void SignVerifyMessageDialog::showTab_VM(bool fShow)
 {
     ui->tabWidget->setCurrentIndex(1);
     if (fShow)
+    {
         this->show();
+    }
 }
+
 
 void SignVerifyMessageDialog::on_addressBookButton_SM_clicked()
 {
@@ -95,10 +105,12 @@ void SignVerifyMessageDialog::on_addressBookButton_SM_clicked()
     }
 }
 
+
 void SignVerifyMessageDialog::on_pasteButton_SM_clicked()
 {
     setAddress_SM(QApplication::clipboard()->text());
 }
+
 
 void SignVerifyMessageDialog::on_signMessageButton_SM_clicked()
 {
@@ -113,6 +125,7 @@ void SignVerifyMessageDialog::on_signMessageButton_SM_clicked()
         ui->statusLabel_SM->setText(tr("The entered address is invalid.") + QString(" ") + tr("Please check the address and try again."));
         return;
     }
+    
     CKeyID keyID;
     if (!addr.GetKeyID(keyID))
     {
@@ -156,10 +169,12 @@ void SignVerifyMessageDialog::on_signMessageButton_SM_clicked()
     ui->signatureOut_SM->setText(QString::fromStdString(EncodeBase64(&vchSig[0], vchSig.size())));
 }
 
+
 void SignVerifyMessageDialog::on_copySignatureButton_SM_clicked()
 {
     QApplication::clipboard()->setText(ui->signatureOut_SM->text());
 }
+
 
 void SignVerifyMessageDialog::on_clearButton_SM_clicked()
 {
@@ -167,9 +182,9 @@ void SignVerifyMessageDialog::on_clearButton_SM_clicked()
     ui->messageIn_SM->clear();
     ui->signatureOut_SM->clear();
     ui->statusLabel_SM->clear();
-
     ui->addressIn_SM->setFocus();
 }
+
 
 void SignVerifyMessageDialog::on_addressBookButton_VM_clicked()
 {
@@ -194,6 +209,7 @@ void SignVerifyMessageDialog::on_verifyMessageButton_VM_clicked()
         ui->statusLabel_VM->setText(tr("The entered address is invalid.") + QString(" ") + tr("Please check the address and try again."));
         return;
     }
+    
     CKeyID keyID;
     if (!addr.GetKeyID(keyID))
     {
@@ -205,7 +221,6 @@ void SignVerifyMessageDialog::on_verifyMessageButton_VM_clicked()
 
     bool fInvalid = false;
     std::vector<unsigned char> vchSig = DecodeBase64(ui->signatureIn_VM->text().toStdString().c_str(), &fInvalid);
-
     if (fInvalid)
     {
         ui->signatureIn_VM->setValid(false);
@@ -238,15 +253,16 @@ void SignVerifyMessageDialog::on_verifyMessageButton_VM_clicked()
     ui->statusLabel_VM->setText(QString("<nobr>") + tr("Message verified.") + QString("</nobr>"));
 }
 
+
 void SignVerifyMessageDialog::on_clearButton_VM_clicked()
 {
     ui->addressIn_VM->clear();
     ui->signatureIn_VM->clear();
     ui->messageIn_VM->clear();
     ui->statusLabel_VM->clear();
-
     ui->addressIn_VM->setFocus();
 }
+
 
 bool SignVerifyMessageDialog::eventFilter(QObject *object, QEvent *event)
 {

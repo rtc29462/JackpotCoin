@@ -45,6 +45,7 @@ BitcoinAmountField::BitcoinAmountField(QWidget *parent):
     unitChanged(unit->currentIndex());
 }
 
+
 void BitcoinAmountField::setText(const QString &text)
 {
     if (text.isEmpty())
@@ -53,40 +54,55 @@ void BitcoinAmountField::setText(const QString &text)
         amount->setValue(text.toDouble());
 }
 
+
 void BitcoinAmountField::clear()
 {
     amount->clear();
     unit->setCurrentIndex(0);
 }
 
+
 bool BitcoinAmountField::validate()
 {
     bool valid = true;
     if (amount->value() == 0.0)
+    {
         valid = false;
+    }
     if (valid && !BitcoinUnits::parse(currentUnit, text(), 0))
+    {
         valid = false;
-
+    }
     setValid(valid);
-
     return valid;
 }
+
 
 void BitcoinAmountField::setValid(bool valid)
 {
     if (valid)
+    {
         amount->setStyleSheet("");
+    }
     else
+    {
         amount->setStyleSheet(STYLE_INVALID);
+    }
 }
+
 
 QString BitcoinAmountField::text() const
 {
     if (amount->text().isEmpty())
+    {
         return QString();
+    }
     else
+    {
         return amount->text();
+    }
 }
+
 
 bool BitcoinAmountField::eventFilter(QObject *object, QEvent *event)
 {
@@ -109,27 +125,31 @@ bool BitcoinAmountField::eventFilter(QObject *object, QEvent *event)
     return QWidget::eventFilter(object, event);
 }
 
+
 QWidget *BitcoinAmountField::setupTabChain(QWidget *prev)
 {
     QWidget::setTabOrder(prev, amount);
     return amount;
 }
 
+
 qint64 BitcoinAmountField::value(bool *valid_out) const
 {
     qint64 val_out = 0;
     bool valid = BitcoinUnits::parse(currentUnit, text(), &val_out);
-    if(valid_out)
+    if (valid_out)
     {
         *valid_out = valid;
     }
     return val_out;
 }
 
+
 void BitcoinAmountField::setValue(qint64 value)
 {
     setText(BitcoinUnits::format(currentUnit, value));
 }
+
 
 void BitcoinAmountField::unitChanged(int idx)
 {
@@ -149,7 +169,7 @@ void BitcoinAmountField::unitChanged(int idx)
     amount->setDecimals(BitcoinUnits::decimals(currentUnit));
     amount->setMaximum(qPow(10, BitcoinUnits::amountDigits(currentUnit)) - qPow(10, -amount->decimals()));
 
-    if(valid)
+    if (valid)
     {
         // If value was valid, re-place it in the widget with the new unit
         setValue(currentValue);
@@ -161,6 +181,7 @@ void BitcoinAmountField::unitChanged(int idx)
     }
     setValid(true);
 }
+
 
 void BitcoinAmountField::setDisplayUnit(int newUnit)
 {

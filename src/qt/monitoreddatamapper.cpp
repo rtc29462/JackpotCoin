@@ -16,20 +16,22 @@ void MonitoredDataMapper::addMapping(QWidget *widget, int section)
     addChangeMonitor(widget);
 }
 
+
 void MonitoredDataMapper::addMapping(QWidget *widget, int section, const QByteArray &propertyName)
 {
     QDataWidgetMapper::addMapping(widget, section, propertyName);
     addChangeMonitor(widget);
 }
 
+
 void MonitoredDataMapper::addChangeMonitor(QWidget *widget)
 {
     // Watch user property of widget for changes, and connect
-    //  the signal to our viewModified signal.
+    // the signal to our viewModified signal.
     QMetaProperty prop = widget->metaObject()->userProperty();
     int signal = prop.notifySignalIndex();
     int method = this->metaObject()->indexOfMethod("viewModified()");
-    if(signal != -1 && method != -1)
+    if ((signal != -1) && (method != -1))
     {
         QMetaObject::connect(widget, signal, this, method);
     }

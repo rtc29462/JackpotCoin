@@ -58,7 +58,7 @@
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout">
      <item>
-      <widget class="QPushButton" name="newAddressButton">
+      <widget class="QPushButton" name="newAddress">
        <property name="toolTip">
         <string>Create a new address</string>
        </property>
@@ -72,7 +72,7 @@
       </widget>
      </item>
      <item>
-      <widget class="QPushButton" name="copyToClipboard">
+      <widget class="QPushButton" name="copyAddress">
        <property name="toolTip">
         <string>Copy the currently selected address to the system clipboard</string>
        </property>
@@ -125,7 +125,7 @@
       </widget>
      </item>
      <item>
-      <widget class="QPushButton" name="deleteButton">
+      <widget class="QPushButton" name="deleteAddress">
        <property name="toolTip">
         <string>Delete the currently selected address from the list</string>
        </property>

@@ -518,7 +518,8 @@ Value getblocktemplate(const Array& params, bool fHelp)
         nStart = GetTime();
 
         // Create new block
-        if (pblock) {
+        if (pblock)
+        {
             delete pblock;
             pblock = NULL;
         }
@@ -543,7 +544,8 @@ Value getblocktemplate(const Array& params, bool fHelp)
         uint256 txHash = tx.GetHash();
         setTxIndex[txHash] = i++;
 
-        if (i == 1 && tx.IsCoinBase() || tx.IsCoinStake()) {
+        if (tx.IsCoinBase() || tx.IsCoinStake())
+        {
             continue;
         }
 
@@ -558,7 +560,6 @@ Value getblocktemplate(const Array& params, bool fHelp)
         MapPrevTx mapInputs;
         map<uint256, CTxIndex> mapUnused;
         bool fInvalid = false;
-        if (!tx.IsCoinBase())
         if (tx.FetchInputs(txdb, mapUnused, false, false, mapInputs, fInvalid))
         {
             entry.push_back(Pair("fee", (int64_t)(tx.GetValueIn(mapInputs) - tx.GetValueOut())));

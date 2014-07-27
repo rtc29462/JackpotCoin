@@ -10,10 +10,11 @@ QT_END_NAMESPACE
 namespace Ui {
     class EditAddressDialog;
 }
+
 class AddressTableModel;
 
-/** Dialog for editing an address and associated information.
- */
+// Dialog for editing an address and associated information.
+
 class EditAddressDialog : public QDialog
 {
     Q_OBJECT
@@ -32,10 +33,12 @@ public:
     void setModel(AddressTableModel *model);
     void loadRow(int row);
 
-    void accept();
-
     QString getAddress() const;
     void setAddress(const QString &address);
+
+public slots:
+    void accept();
+
 private:
     bool saveCurrentRow();
 
@@ -45,6 +48,7 @@ private:
     AddressTableModel *model;
 
     QString address;
+    
 };
 
 #endif // EDITADDRESSDIALOG_H

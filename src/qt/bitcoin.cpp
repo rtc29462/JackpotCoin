@@ -1,6 +1,5 @@
-/*
- * W.J. van der Laan 2011-2012
- */
+#include <QApplication>
+
 #include "bitcoingui.h"
 #include "clientmodel.h"
 #include "walletmodel.h"
@@ -14,7 +13,9 @@
 
 #include <QApplication>
 #include <QMessageBox>
+#if QT_VERSION < 0x050000
 #include <QTextCodec>
+#endif
 #include <QLocale>
 #include <QTranslator>
 #include <QSplashScreen>
@@ -38,7 +39,7 @@ static QSplashScreen *splashref;
 static void ThreadSafeMessageBox(const std::string& message, const std::string& caption, int style)
 {
     // Message from network thread
-    if(guiref)
+    if (guiref)
     {
         bool modal = (style & CClientUIInterface::MODAL);
         // in case of modal message, use blocking connection to wait for user to click OK
@@ -55,54 +56,58 @@ static void ThreadSafeMessageBox(const std::string& message, const std::string& 
     }
 }
 
+
 static bool ThreadSafeAskFee(int64 nFeeRequired, const std::string& strCaption)
 {
-    if(!guiref)
-        return false;
-    if(nFeeRequired < MIN_TX_FEE || nFeeRequired <= nTransactionFee || fDaemon)
-        return true;
-    bool payFee = false;
-
-    QMetaObject::invokeMethod(guiref, "askFee", GUIUtil::blockingGUIThreadConnection(),
+    if (guiref)
+    {
+        if ((nFeeRequired < MIN_TX_FEE) || (nFeeRequired <= nTransactionFee) || fDaemon)
+        {
+            return true;
+        }
+ 
+        bool payFee = false;
+        QMetaObject::invokeMethod(guiref, "askFee", GUIUtil::blockingGUIThreadConnection(),
                                Q_ARG(qint64, nFeeRequired),
                                Q_ARG(bool*, &payFee));
-
-    return payFee;
+        return payFee;
+    }
+    return false;
 }
+
 
 static void ThreadSafeHandleURI(const std::string& strURI)
 {
-    if(!guiref)
-        return;
-
-    QMetaObject::invokeMethod(guiref, "handleURI", GUIUtil::blockingGUIThreadConnection(),
+    if (guiref)
+    {
+        QMetaObject::invokeMethod(guiref, "handleURI", GUIUtil::blockingGUIThreadConnection(),
                                Q_ARG(QString, QString::fromStdString(strURI)));
+    }
 }
+
 
 static void InitMessage(const std::string &message)
 {
-    if(splashref)
+    if (splashref)
     {
         splashref->showMessage(QString::fromStdString(message), Qt::AlignBottom|Qt::AlignHCenter, QColor(255,255,200));
         QApplication::instance()->processEvents();
     }
 }
 
+
 static void QueueShutdown()
 {
     QMetaObject::invokeMethod(QCoreApplication::instance(), "quit", Qt::QueuedConnection);
 }
 
-/*
-   Translate string to current locale using Qt.
- */
+// Translate string to current locale using Qt.
 static std::string Translate(const char* psz)
 {
     return QCoreApplication::translate("bitcoin-core", psz).toStdString();
 }
 
-/* Handle runaway exceptions. Shows a message box with the problem and quits the program.
- */
+// Handle runaway exceptions. Shows a message box with the problem and quits the program.
 static void handleRunawayException(std::exception *e)
 {
     PrintExceptionContinue(e, "Runaway exception");
@@ -110,15 +115,18 @@ static void handleRunawayException(std::exception *e)
     exit(1);
 }
 
+
 #ifndef BITCOIN_QT_TEST
 int main(int argc, char *argv[])
 {
     // Do this early as we don't want to bother initializing if we are just calling IPC
     ipcScanRelay(argc, argv);
 
+#if QT_VERSION < 0x050000
     // Internal string conversion is all UTF-8
     QTextCodec::setCodecForTr(QTextCodec::codecForName("UTF-8"));
     QTextCodec::setCodecForCStrings(QTextCodec::codecForTr());
+#endif
 
     Q_INIT_RESOURCE(bitcoin);
     QApplication app(argc, argv);
@@ -145,9 +153,13 @@ int main(int argc, char *argv[])
     app.setOrganizationName("JackpotCoin");
     app.setOrganizationDomain("JackpotCoin.su");
     if(GetBoolArg("-testnet")) // Separate UI settings for testnet
+    {
         app.setApplicationName("JackpotCoin-Qt-testnet");
+    }
     else
+    {
         app.setApplicationName("JackpotCoin-Qt");
+    }
 
     // ... then GUI settings:
     OptionsModel optionsModel;
@@ -165,19 +177,27 @@ int main(int argc, char *argv[])
 
     // Load e.g. qt_de.qm
     if (qtTranslatorBase.load("qt_" + lang, QLibraryInfo::location(QLibraryInfo::TranslationsPath)))
+    {
         app.installTranslator(&qtTranslatorBase);
-
+    }
+    
     // Load e.g. qt_de_DE.qm
     if (qtTranslator.load("qt_" + lang_territory, QLibraryInfo::location(QLibraryInfo::TranslationsPath)))
+    {
         app.installTranslator(&qtTranslator);
+    }
 
     // Load e.g. bitcoin_de.qm (shortcut "de" needs to be defined in bitcoin.qrc)
     if (translatorBase.load(lang, ":/translations/"))
+    {
         app.installTranslator(&translatorBase);
+    }
 
     // Load e.g. bitcoin_de_DE.qm (shortcut "de_DE" needs to be defined in bitcoin.qrc)
     if (translator.load(lang_territory, ":/translations/"))
+    {
         app.installTranslator(&translator);
+    }
 
     // Subscribe to global signals from core
     uiInterface.ThreadSafeMessageBox.connect(ThreadSafeMessageBox);
@@ -205,18 +225,20 @@ int main(int argc, char *argv[])
     }
 
     app.processEvents();
-
     app.setQuitOnLastWindowClosed(false);
 
     try
     {
         // Regenerate startup link, to fix links to old versions
         if (GUIUtil::GetStartOnSystemStartup())
+        {
             GUIUtil::SetStartOnSystemStartup(true);
-
+        }
+        
         BitcoinGUI window;
         guiref = &window;
-        if(AppInit2())
+        
+        if (AppInit2())
         {
             {
                 // Put this in a block, so that the Model objects are cleaned up before
@@ -225,8 +247,10 @@ int main(int argc, char *argv[])
                 optionsModel.Upgrade(); // Must be done after AppInit2
 
                 if (splashref)
+                {
                     splash.finish(&window);
-
+                }
+                   
                 ClientModel clientModel(&optionsModel);
                 WalletModel walletModel(pwalletMain, &optionsModel);
 
@@ -260,9 +284,13 @@ int main(int argc, char *argv[])
         {
             return 1;
         }
-    } catch (std::exception& e) {
+    } 
+    catch (std::exception& e) 
+    {
         handleRunawayException(&e);
-    } catch (...) {
+    } 
+    catch (...) 
+    {
         handleRunawayException(NULL);
     }
     return 0;

@@ -16,12 +16,12 @@ class QFrame;
 class QDateTimeEdit;
 QT_END_NAMESPACE
 
-/** Widget showing the transaction list for a wallet, including a filter row.
-    Using the filter row, the user can view or export a subset of the transactions.
-  */
+// Widget showing the transaction list for a wallet, including a filter row.
+// Using the filter row, the user can view or export a subset of the transactions.
 class TransactionView : public QWidget
 {
     Q_OBJECT
+    
 public:
     explicit TransactionView(QWidget *parent = 0);
 
@@ -65,6 +65,7 @@ private slots:
     void editLabel();
     void copyLabel();
     void copyAmount();
+    void copyTxID();
 
 signals:
     void doubleClicked(const QModelIndex&);
@@ -76,6 +77,7 @@ public slots:
     void changedAmount(const QString &amount);
     void exportClicked();
     void focusTransaction(const QModelIndex&);
+    void updateTransactionList(bool hideInvalid);
 
 };
 

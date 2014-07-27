@@ -1,6 +1,5 @@
-#include "rpcconsole.h"
 #include "ui_rpcconsole.h"
-
+#include "rpcconsole.h"
 #include "clientmodel.h"
 #include "bitcoinrpc.h"
 #include "guiutil.h"
@@ -10,8 +9,10 @@
 #include <QThread>
 #include <QTextEdit>
 #include <QKeyEvent>
-#include <QUrl>
 #include <QScrollBar>
+#if QT_VERSION < 0x050000
+#include <QUrl>
+#endif
 
 #include <openssl/crypto.h>
 
@@ -39,9 +40,11 @@ const struct {
 class RPCExecutor: public QObject
 {
     Q_OBJECT
+
 public slots:
     void start();
     void request(const QString &command);
+
 signals:
     void reply(int category, const QString &command);
 };
@@ -78,74 +81,100 @@ bool parseCommandLine(std::vector<std::string> &args, const std::string &strComm
         STATE_ESCAPE_OUTER,
         STATE_ESCAPE_DOUBLEQUOTED
     } state = STATE_EATING_SPACES;
+    
     std::string curarg;
-    foreach(char ch, strCommand)
+        
+    foreach (char ch, strCommand)
     {
-        switch(state)
+        switch (state)
         {
-        case STATE_ARGUMENT: // In or after argument
-        case STATE_EATING_SPACES: // Handle runs of whitespace
-            switch(ch)
-            {
-            case '"': state = STATE_DOUBLEQUOTED; break;
-            case '\'': state = STATE_SINGLEQUOTED; break;
-            case '\\': state = STATE_ESCAPE_OUTER; break;
-            case ' ': case '\n': case '\t':
-                if(state == STATE_ARGUMENT) // Space ends argument
-                {
-                    args.push_back(curarg);
-                    curarg.clear();
-                }
-                state = STATE_EATING_SPACES;
-                break;
-            default: curarg += ch; state = STATE_ARGUMENT;
-            }
-            break;
-        case STATE_SINGLEQUOTED: // Single-quoted string
-            switch(ch)
-            {
-            case '\'': state = STATE_ARGUMENT; break;
-            default: curarg += ch;
-            }
-            break;
-        case STATE_DOUBLEQUOTED: // Double-quoted string
-            switch(ch)
-            {
-            case '"': state = STATE_ARGUMENT; break;
-            case '\\': state = STATE_ESCAPE_DOUBLEQUOTED; break;
-            default: curarg += ch;
-            }
-            break;
-        case STATE_ESCAPE_OUTER: // '\' outside quotes
-            curarg += ch; state = STATE_ARGUMENT;
-            break;
-        case STATE_ESCAPE_DOUBLEQUOTED: // '\' in double-quoted text
-            if(ch != '"' && ch != '\\') curarg += '\\'; // keep '\' for everything but the quote and '\' itself
-            curarg += ch; state = STATE_DOUBLEQUOTED;
-            break;
+          case STATE_ARGUMENT:      // In or after argument
+          case STATE_EATING_SPACES: // Handle runs of whitespace
+               switch (ch)
+               {
+                 case '"':
+                      state = STATE_DOUBLEQUOTED; 
+                      break;
+                 case '\'': 
+                      state = STATE_SINGLEQUOTED; 
+                      break;
+                 case '\\': 
+                      state = STATE_ESCAPE_OUTER; 
+                      break;
+                 case ' ': 
+                 case '\n': 
+                 case '\t':
+                      // Space ends argument
+                      if (state == STATE_ARGUMENT)
+                      {
+                         args.push_back(curarg);
+                         curarg.clear();
+                      }
+                      state = STATE_EATING_SPACES;
+                      break;
+                 default: 
+                      curarg += ch; 
+                      state = STATE_ARGUMENT;
+               }
+               break;
+          case STATE_SINGLEQUOTED:  // Single-quoted string
+               switch(ch)
+               {
+                 case '\'': 
+                      state = STATE_ARGUMENT; 
+                      break;
+                 default: 
+                      curarg += ch;
+               }
+               break;
+          case STATE_DOUBLEQUOTED:  // Double-quoted string
+               switch(ch)
+               {
+                 case '"': 
+                      state = STATE_ARGUMENT; 
+                      break;
+                 case '\\': 
+                      state = STATE_ESCAPE_DOUBLEQUOTED; 
+                      break;
+                 default: 
+                      curarg += ch;
+               }
+               break;
+          case STATE_ESCAPE_OUTER:        // '\' outside quotes
+               curarg += ch; 
+               state = STATE_ARGUMENT;
+               break;
+          case STATE_ESCAPE_DOUBLEQUOTED: // '\' in double-quoted text
+               if (ch != '"' && ch != '\\') 
+               {
+                  curarg += '\\';         // keep '\' for everything but the quote and '\' itself
+               }
+               curarg += ch; state = STATE_DOUBLEQUOTED;
+               break;
         }
     }
-    switch(state) // final state
+    switch (state) // final state
     {
-    case STATE_EATING_SPACES:
-        return true;
-    case STATE_ARGUMENT:
-        args.push_back(curarg);
-        return true;
-    default: // ERROR to end in one of the other states
-        return false;
+      case STATE_EATING_SPACES:
+           return true;
+      case STATE_ARGUMENT:
+           args.push_back(curarg);
+           return true;
+      default: // ERROR to end in one of the other states
+           return false;
     }
 }
+
 
 void RPCExecutor::request(const QString &command)
 {
     std::vector<std::string> args;
-    if(!parseCommandLine(args, command.toStdString()))
+    if (!parseCommandLine(args, command.toStdString()))
     {
         emit reply(RPCConsole::CMD_ERROR, QString("Parse error: unbalanced ' or \""));
         return;
     }
-    if(args.empty())
+    if (args.empty())
         return; // Nothing to do
     try
     {
@@ -158,11 +187,17 @@ void RPCExecutor::request(const QString &command)
 
         // Format result reply
         if (result.type() == json_spirit::null_type)
+        {
             strPrint = "";
+        }
         else if (result.type() == json_spirit::str_type)
+        {
             strPrint = result.get_str();
+        }
         else
+        {
             strPrint = write_string(result, true);
+        }
 
         emit reply(RPCConsole::CMD_REPLY, QString::fromStdString(strPrint));
     }
@@ -184,6 +219,7 @@ void RPCExecutor::request(const QString &command)
         emit reply(RPCConsole::CMD_ERROR, QString("Error: ") + QString::fromStdString(e.what()));
     }
 }
+
 
 RPCConsole::RPCConsole(QWidget *parent) :
     QDialog(parent),
@@ -207,15 +243,16 @@ RPCConsole::RPCConsole(QWidget *parent) :
     ui->openSSLVersion->setText(SSLeay_version(SSLEAY_VERSION));
 
     startExecutor();
-
     clear();
 }
+
 
 RPCConsole::~RPCConsole()
 {
     emit stopExecutor();
     delete ui;
 }
+
 
 bool RPCConsole::eventFilter(QObject* obj, QEvent *event)
 {
@@ -226,37 +263,50 @@ bool RPCConsole::eventFilter(QObject* obj, QEvent *event)
         Qt::KeyboardModifiers mod = keyevt->modifiers();
         switch(key)
         {
-        case Qt::Key_Up: if(obj == ui->lineEdit) { browseHistory(-1); return true; } break;
-        case Qt::Key_Down: if(obj == ui->lineEdit) { browseHistory(1); return true; } break;
-        case Qt::Key_PageUp: /* pass paging keys to messages widget */
-        case Qt::Key_PageDown:
-            if(obj == ui->lineEdit)
-            {
-                QApplication::postEvent(ui->messagesWidget, new QKeyEvent(*keyevt));
-                return true;
-            }
-            break;
-        default:
-            // Typing in messages widget brings focus to line edit, and redirects key there
-            // Exclude most combinations and keys that emit no text, except paste shortcuts
-            if(obj == ui->messagesWidget && (
-                  (!mod && !keyevt->text().isEmpty() && key != Qt::Key_Tab) ||
-                  ((mod & Qt::ControlModifier) && key == Qt::Key_V) ||
-                  ((mod & Qt::ShiftModifier) && key == Qt::Key_Insert)))
-            {
-                ui->lineEdit->setFocus();
-                QApplication::postEvent(ui->lineEdit, new QKeyEvent(*keyevt));
-                return true;
-            }
+          case Qt::Key_Up: 
+               if (obj == ui->lineEdit) 
+               { 
+                  browseHistory(-1); 
+                  return true; 
+               } 
+               break;
+          case Qt::Key_Down: 
+               if (obj == ui->lineEdit) 
+               { 
+                   browseHistory(1); 
+                   return true; 
+               } 
+               break;
+          case Qt::Key_PageUp: /* pass paging keys to messages widget */
+          case Qt::Key_PageDown:
+               if (obj == ui->lineEdit)
+               {
+                   QApplication::postEvent(ui->messagesWidget, new QKeyEvent(*keyevt));
+                   return true;
+               }
+               break;
+          default:
+               // Typing in messages widget brings focus to line edit, and redirects key there
+               // Exclude most combinations and keys that emit no text, except paste shortcuts
+               if (obj == ui->messagesWidget && 
+                   ((!mod && !keyevt->text().isEmpty() && (key != Qt::Key_Tab)) ||
+                    ((mod & Qt::ControlModifier) && (key == Qt::Key_V)) ||
+                    ((mod & Qt::ShiftModifier) && (key == Qt::Key_Insert))))
+               {
+                   ui->lineEdit->setFocus();
+                   QApplication::postEvent(ui->lineEdit, new QKeyEvent(*keyevt));
+                   return true;
+               }
         }
     }
     return QDialog::eventFilter(obj, event);
 }
 
+
 void RPCConsole::setClientModel(ClientModel *model)
 {
     this->clientModel = model;
-    if(model)
+    if (model)
     {
         // Subscribe to information, replies, messages, errors
         connect(model, SIGNAL(numConnectionsChanged(int)), this, SLOT(setNumConnections(int)));
@@ -275,16 +325,18 @@ void RPCConsole::setClientModel(ClientModel *model)
     }
 }
 
+
 static QString categoryClass(int category)
 {
-    switch(category)
+    switch (category)
     {
-    case RPCConsole::CMD_REQUEST:  return "cmd-request"; break;
-    case RPCConsole::CMD_REPLY:    return "cmd-reply"; break;
-    case RPCConsole::CMD_ERROR:    return "cmd-error"; break;
-    default:                       return "misc";
+      case RPCConsole::CMD_REQUEST: return "cmd-request";
+      case RPCConsole::CMD_REPLY:   return "cmd-reply";
+      case RPCConsole::CMD_ERROR:   return "cmd-error";
+      default:                      return "misc";
     }
 }
+
 
 void RPCConsole::clear()
 {
@@ -294,28 +346,28 @@ void RPCConsole::clear()
 
     // Add smoothly scaled icon images.
     // (when using width/height on an img, Qt uses nearest instead of linear interpolation)
-    for(int i=0; ICON_MAPPING[i].url; ++i)
+    for (int i=0; ICON_MAPPING[i].url; ++i)
     {
         ui->messagesWidget->document()->addResource(
-                    QTextDocument::ImageResource,
-                    QUrl(ICON_MAPPING[i].url),
-                    QImage(ICON_MAPPING[i].source).scaled(ICON_SIZE, Qt::IgnoreAspectRatio, Qt::SmoothTransformation));
+            QTextDocument::ImageResource,
+            QUrl(ICON_MAPPING[i].url),
+            QImage(ICON_MAPPING[i].source).scaled(ICON_SIZE, Qt::IgnoreAspectRatio, Qt::SmoothTransformation));
     }
 
     // Set default style sheet
     ui->messagesWidget->document()->setDefaultStyleSheet(
-                "table { }"
-                "td.time { color: #808080; padding-top: 3px; } "
-                "td.message { font-family: Monospace; font-size: 12px; } "
-                "td.cmd-request { color: #006060; } "
-                "td.cmd-error { color: red; } "
-                "b { color: #006060; } "
-                );
+            "table { }"
+            "td.time { color: #808080; padding-top: 3px; } "
+            "td.message { font-family: Monospace; font-size: 12px; } "
+            "td.cmd-request { color: #006060; } "
+            "td.cmd-error { color: red; } "
+            "b { color: #006060; } ");
 
     message(CMD_REPLY, (tr("Welcome to the JackpotCoin RPC console.") + "<br>" +
                         tr("Use up and down arrows to navigate history, and <b>Ctrl-L</b> to clear screen.") + "<br>" +
                         tr("Type <b>help</b> for an overview of available commands.")), true);
 }
+
 
 void RPCConsole::message(int category, const QString &message, bool html)
 {
@@ -325,24 +377,30 @@ void RPCConsole::message(int category, const QString &message, bool html)
     out += "<table><tr><td class=\"time\" width=\"65\">" + timeString + "</td>";
     out += "<td class=\"icon\" width=\"32\"><img src=\"" + categoryClass(category) + "\"></td>";
     out += "<td class=\"message " + categoryClass(category) + "\" valign=\"middle\">";
-    if(html)
+    if (html)
+    {
         out += message;
+    }
     else
+    {
         out += GUIUtil::HtmlEscape(message, true);
+    }
     out += "</td></tr></table>";
     ui->messagesWidget->append(out);
 }
+
 
 void RPCConsole::setNumConnections(int count)
 {
     ui->numberOfConnections->setText(QString::number(count));
 }
 
+
 void RPCConsole::setNumBlocks(int count, int countOfPeers)
 {
     ui->numberOfBlocks->setText(QString::number(count));
-    ui->totalBlocks->setText(QString::number(countOfPeers));
-    if(clientModel)
+    ui->totalBlocks->setText(countOfPeers == 0 ? tr("N/A") : QString::number(countOfPeers));
+    if (clientModel)
     {
         // If there is no current number available display N/A instead of 0, which can't ever be true
         ui->totalBlocks->setText(clientModel->getNumBlocksOfPeers() == 0 ? tr("N/A") : QString::number(clientModel->getNumBlocksOfPeers()));
@@ -350,12 +408,13 @@ void RPCConsole::setNumBlocks(int count, int countOfPeers)
     }
 }
 
+
 void RPCConsole::on_lineEdit_returnPressed()
 {
     QString cmd = ui->lineEdit->text();
     ui->lineEdit->clear();
 
-    if(!cmd.isEmpty())
+    if (!cmd.isEmpty())
     {
         message(CMD_REQUEST, cmd);
         emit cmdRequest(cmd);
@@ -364,8 +423,10 @@ void RPCConsole::on_lineEdit_returnPressed()
         // Append command to history
         history.append(cmd);
         // Enforce maximum history size
-        while(history.size() > CONSOLE_HISTORY)
+        while (history.size() > CONSOLE_HISTORY)
+        {
             history.removeFirst();
+        }
         // Set pointer to end of history
         historyPtr = history.size();
         // Scroll console view to end
@@ -373,18 +434,26 @@ void RPCConsole::on_lineEdit_returnPressed()
     }
 }
 
+
 void RPCConsole::browseHistory(int offset)
 {
     historyPtr += offset;
-    if(historyPtr < 0)
+    if (historyPtr < 0) 
+    {
         historyPtr = 0;
-    if(historyPtr > history.size())
+    }
+    if (historyPtr > history.size())
+    {
         historyPtr = history.size();
+    }
     QString cmd;
-    if(historyPtr < history.size())
+    if (historyPtr < history.size())
+    {
         cmd = history.at(historyPtr);
+    }
     ui->lineEdit->setText(cmd);
 }
+
 
 void RPCConsole::startExecutor()
 {
@@ -411,24 +480,28 @@ void RPCConsole::startExecutor()
     thread->start();
 }
 
+
 void RPCConsole::on_tabWidget_currentChanged(int index)
 {
-    if(ui->tabWidget->widget(index) == ui->tab_console)
+    if (ui->tabWidget->widget(index) == ui->tab_console)
     {
         ui->lineEdit->setFocus();
     }
 }
+
 
 void RPCConsole::on_openDebugLogfileButton_clicked()
 {
     GUIUtil::openDebugLogfile();
 }
 
+
 void RPCConsole::scrollToEnd()
 {
     QScrollBar *scrollbar = ui->messagesWidget->verticalScrollBar();
     scrollbar->setValue(scrollbar->maximum());
 }
+
 
 void RPCConsole::on_showCLOptionsButton_clicked()
 {

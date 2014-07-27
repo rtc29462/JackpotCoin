@@ -10,11 +10,12 @@ QT_END_NAMESPACE
 namespace Ui {
     class OverviewPage;
 }
+
 class WalletModel;
 class TxViewDelegate;
 class TransactionFilterProxy;
 
-/** Overview ("home") page widget */
+// Overview ("home") page widget
 class OverviewPage : public QWidget
 {
     Q_OBJECT
@@ -30,6 +31,7 @@ public slots:
     void setBalance(qint64 balance, qint64 stake, qint64 unconfirmedBalance, qint64 immatureBalance);
     void setJackpot();
     void setNumTransactions(int count);
+    void updateTransactions();
 	void unlockWallet();
 
 signals:
@@ -50,6 +52,7 @@ private:
 private slots:
     void updateDisplayUnit();
     void handleTransactionClicked(const QModelIndex &index);
+    
 };
 
 #endif // OVERVIEWPAGE_H

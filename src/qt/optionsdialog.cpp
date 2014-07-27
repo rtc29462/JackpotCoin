@@ -53,7 +53,7 @@ OptionsDialog::OptionsDialog(QWidget *parent) :
     /* Display elements init */
     QDir translations(":translations");
     ui->lang->addItem(QString("(") + tr("default") + QString(")"), QVariant(""));
-    foreach(const QString &langStr, translations.entryList())
+    foreach (const QString &langStr, translations.entryList())
     {
         QLocale locale(langStr);
 
@@ -95,19 +95,20 @@ OptionsDialog::OptionsDialog(QWidget *parent) :
     connect(this, SIGNAL(proxyIpValid(QValidatedLineEdit *, bool)), this, SLOT(handleProxyIpValid(QValidatedLineEdit *, bool)));
 }
 
+
 OptionsDialog::~OptionsDialog()
 {
     delete ui;
 }
 
+
 void OptionsDialog::setModel(OptionsModel *model)
 {
     this->model = model;
-
+    
     if(model)
     {
         connect(model, SIGNAL(displayUnitChanged(int)), this, SLOT(updateDisplayUnit()));
-
         mapper->setModel(model);
         setMapper();
         mapper->toFirst();
@@ -123,11 +124,15 @@ void OptionsDialog::setModel(OptionsModel *model)
     disableApplyButton();
 }
 
+
 void OptionsDialog::setMapper()
 {
     /* Main */
-    mapper->addMapping(ui->transactionFee, OptionsModel::Fee);
     mapper->addMapping(ui->bitcoinAtStartup, OptionsModel::StartAtStartup);
+
+    /* Wallet */
+    mapper->addMapping(ui->transactionFee, OptionsModel::Fee);
+    mapper->addMapping(ui->reserveBalance, OptionsModel::ReserveBalance);
     mapper->addMapping(ui->detachDatabases, OptionsModel::DetachDatabases);
 
     /* Network */
@@ -149,29 +154,40 @@ void OptionsDialog::setMapper()
     mapper->addMapping(ui->unit, OptionsModel::DisplayUnit);
     mapper->addMapping(ui->displayAddresses, OptionsModel::DisplayAddresses);
 	mapper->addMapping(ui->coinControlFeatures, OptionsModel::CoinControlFeatures);
+#ifndef Q_OS_MAC
+    mapper->addMapping(ui->hideNotification, OptionsModel::HideNotification);
+#endif
+    mapper->addMapping(ui->hideInvalid, OptionsModel::HideInvalid);
 }
+
 
 void OptionsDialog::enableApplyButton()
 {
     ui->applyButton->setEnabled(true);
 }
 
+
 void OptionsDialog::disableApplyButton()
 {
     ui->applyButton->setEnabled(false);
 }
 
+
 void OptionsDialog::enableSaveButtons()
 {
     /* prevent enabling of the save buttons when data modified, if there is an invalid proxy address present */
-    if(fProxyIpValid)
+    if (fProxyIpValid)
+    {
         setSaveButtonState(true);
+    }
 }
+
 
 void OptionsDialog::disableSaveButtons()
 {
     setSaveButtonState(false);
 }
+
 
 void OptionsDialog::setSaveButtonState(bool fState)
 {
@@ -179,16 +195,19 @@ void OptionsDialog::setSaveButtonState(bool fState)
     ui->okButton->setEnabled(fState);
 }
 
+
 void OptionsDialog::on_okButton_clicked()
 {
     mapper->submit();
     accept();
 }
 
+
 void OptionsDialog::on_cancelButton_clicked()
 {
     reject();
 }
+
 
 void OptionsDialog::on_applyButton_clicked()
 {
@@ -196,23 +215,26 @@ void OptionsDialog::on_applyButton_clicked()
     disableApplyButton();
 }
 
+
 void OptionsDialog::showRestartWarning_Proxy()
 {
-    if(!fRestartWarningDisplayed_Proxy)
+    if (!fRestartWarningDisplayed_Proxy)
     {
-        QMessageBox::warning(this, tr("Warning"), tr("This setting will take effect after restarting JackpotCoin."), QMessageBox::Ok);
+        QMessageBox::warning(this, tr("Warning"), tr("This setting will take effect after restarting."), QMessageBox::Ok);
         fRestartWarningDisplayed_Proxy = true;
     }
 }
 
+
 void OptionsDialog::showRestartWarning_Lang()
 {
-    if(!fRestartWarningDisplayed_Lang)
+    if (!fRestartWarningDisplayed_Lang)
     {
-        QMessageBox::warning(this, tr("Warning"), tr("This setting will take effect after restarting JackpotCoin."), QMessageBox::Ok);
+        QMessageBox::warning(this, tr("Warning"), tr("This setting will take effect after restarting."), QMessageBox::Ok);
         fRestartWarningDisplayed_Lang = true;
     }
 }
+
 
 void OptionsDialog::updateDisplayUnit()
 {
@@ -223,12 +245,13 @@ void OptionsDialog::updateDisplayUnit()
     }
 }
 
+
 void OptionsDialog::handleProxyIpValid(QValidatedLineEdit *object, bool fState)
 {
     // this is used in a check before re-enabling the save buttons
     fProxyIpValid = fState;
 
-    if(fProxyIpValid)
+    if (fProxyIpValid)
     {
         enableSaveButtons();
         ui->statusLabel->clear();
@@ -242,11 +265,12 @@ void OptionsDialog::handleProxyIpValid(QValidatedLineEdit *object, bool fState)
     }
 }
 
+
 bool OptionsDialog::eventFilter(QObject *object, QEvent *event)
 {
-    if(event->type() == QEvent::FocusOut)
+    if (event->type() == QEvent::FocusOut)
     {
-        if(object == ui->proxyIp)
+        if (object == ui->proxyIp)
         {
             CService addr;
             /* Check proxyIp for a valid IPv4/IPv6 address and emit the proxyIpValid signal */
