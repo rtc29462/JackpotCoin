@@ -28,9 +28,6 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
 
     if ((nNet > 0) || (wtx.IsCoinBase() || wtx.IsCoinStake()))
     {
-        //
-        // Credit
-        //
         BOOST_FOREACH (const CTxOut& txout, wtx.vout)
         {
             if (wallet->IsMine(txout))
@@ -60,7 +57,8 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
                 {
                     if (hashPrev == hash) 
                     {
-                        continue; // last coinstake output
+                        // last coinstake output
+                        continue; 
                     }
                     sub.type = TransactionRecord::StakeMint;
                     sub.credit = nNet > 0 ? nNet : wtx.GetValueOut() - nDebit;
@@ -93,9 +91,6 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
         }
         else if (fAllFromMe)
         {
-            //
-            // Debit
-            //
             int64 nTxFee = nDebit - wtx.GetValueOut();
             for (unsigned int nOut = 0; nOut < wtx.vout.size(); nOut++)
             {
@@ -125,7 +120,7 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
                 }
 
                 int64 nValue = txout.nValue;
-                /* Add fee to first output */
+                //  Add fee to first output
                 if (nTxFee > 0)
                 {
                     nValue += nTxFee;
@@ -137,9 +132,7 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
         }
         else
         {
-            //
             // Mixed debit transaction, can't break down payees
-            //
             parts.append(TransactionRecord(hash, nTime, TransactionRecord::Other, "", nNet, 0));
         }
     }

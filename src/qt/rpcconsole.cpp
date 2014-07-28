@@ -35,8 +35,7 @@ const struct {
     {NULL, NULL}
 };
 
-/* Object for executing console RPC commands in a separate thread.
-*/
+// Object for executing console RPC commands in a separate thread.
 class RPCExecutor: public QObject
 {
     Q_OBJECT
@@ -56,20 +55,19 @@ void RPCExecutor::start()
    // Nothing to do
 }
 
-/**
- * Split shell command line into a list of arguments. Aims to emulate \c bash and friends.
- *
- * - Arguments are delimited with whitespace
- * - Extra whitespace at the beginning and end and between arguments will be ignored
- * - Text can be "double" or 'single' quoted
- * - The backslash \c \ is used as escape character
- *   - Outside quotes, any character can be escaped
- *   - Within double quotes, only escape \c " and backslashes before a \c " or another backslash
- *   - Within single quotes, no escaping is possible and no special interpretation takes place
- *
- * @param[out]   args        Parsed arguments will be appended to this list
- * @param[in]    strCommand  Command line to split
- */
+// Split shell command line into a list of arguments. Aims to emulate \c bash and friends.
+//
+// - Arguments are delimited with whitespace
+// - Extra whitespace at the beginning and end and between arguments will be ignored
+// - Text can be "double" or 'single' quoted
+// - The backslash \c \ is used as escape character
+//   - Outside quotes, any character can be escaped
+//   - Within double quotes, only escape \c " and backslashes before a \c " or another backslash
+//   - Within single quotes, no escaping is possible and no special interpretation takes place
+//
+// args        Parsed arguments will be appended to this list
+// strCommand  Command line to split
+//
 bool parseCommandLine(std::vector<std::string> &args, const std::string &strCommand)
 {
     enum CmdParseState
@@ -88,8 +86,8 @@ bool parseCommandLine(std::vector<std::string> &args, const std::string &strComm
     {
         switch (state)
         {
-          case STATE_ARGUMENT:      // In or after argument
-          case STATE_EATING_SPACES: // Handle runs of whitespace
+          case STATE_ARGUMENT:                    // In or after argument
+          case STATE_EATING_SPACES:               // Handle runs of whitespace
                switch (ch)
                {
                  case '"':
@@ -117,7 +115,7 @@ bool parseCommandLine(std::vector<std::string> &args, const std::string &strComm
                       state = STATE_ARGUMENT;
                }
                break;
-          case STATE_SINGLEQUOTED:  // Single-quoted string
+          case STATE_SINGLEQUOTED:                // Single-quoted string
                switch(ch)
                {
                  case '\'': 
@@ -127,7 +125,7 @@ bool parseCommandLine(std::vector<std::string> &args, const std::string &strComm
                       curarg += ch;
                }
                break;
-          case STATE_DOUBLEQUOTED:  // Double-quoted string
+          case STATE_DOUBLEQUOTED:                // Double-quoted string
                switch(ch)
                {
                  case '"': 
@@ -140,27 +138,29 @@ bool parseCommandLine(std::vector<std::string> &args, const std::string &strComm
                       curarg += ch;
                }
                break;
-          case STATE_ESCAPE_OUTER:        // '\' outside quotes
+          case STATE_ESCAPE_OUTER:                // '\' outside quotes
                curarg += ch; 
                state = STATE_ARGUMENT;
                break;
-          case STATE_ESCAPE_DOUBLEQUOTED: // '\' in double-quoted text
+          case STATE_ESCAPE_DOUBLEQUOTED:         // '\' in double-quoted text
                if (ch != '"' && ch != '\\') 
                {
-                  curarg += '\\';         // keep '\' for everything but the quote and '\' itself
+                  // keep '\' for everything but the quote and '\' itself
+                  curarg += '\\';         
                }
                curarg += ch; state = STATE_DOUBLEQUOTED;
                break;
         }
     }
-    switch (state) // final state
+    switch (state)
     {
       case STATE_EATING_SPACES:
            return true;
       case STATE_ARGUMENT:
            args.push_back(curarg);
            return true;
-      default: // ERROR to end in one of the other states
+      default: 
+           // ERROR to end in one of the other states
            return false;
     }
 }
@@ -175,7 +175,9 @@ void RPCExecutor::request(const QString &command)
         return;
     }
     if (args.empty())
-        return; // Nothing to do
+    {
+        return;
+    }
     try
     {
         std::string strPrint;
@@ -203,14 +205,17 @@ void RPCExecutor::request(const QString &command)
     }
     catch (json_spirit::Object& objError)
     {
-        try // Nice formatting for standard-format error
+        try 
         {
+            // Nice formatting for standard-format error
             int code = find_value(objError, "code").get_int();
             std::string message = find_value(objError, "message").get_str();
             emit reply(RPCConsole::CMD_ERROR, QString::fromStdString(message) + " (code " + QString::number(code) + ")");
         }
-        catch(std::runtime_error &) // raised when converting to invalid type, i.e. missing code or message
-        {   // Show raw JSON object
+        catch (std::runtime_error &) 
+        {   
+            // raised when converting to invalid type, i.e. missing code or message
+            // Show raw JSON object
             emit reply(RPCConsole::CMD_ERROR, QString::fromStdString(write_string(json_spirit::Value(objError), false)));
         }
     }
@@ -256,7 +261,8 @@ RPCConsole::~RPCConsole()
 
 bool RPCConsole::eventFilter(QObject* obj, QEvent *event)
 {
-    if(event->type() == QEvent::KeyPress) // Special key handling
+    // Special key handling
+    if(event->type() == QEvent::KeyPress)
     {
         QKeyEvent *keyevt = static_cast<QKeyEvent*>(event);
         int key = keyevt->key();
@@ -277,7 +283,7 @@ bool RPCConsole::eventFilter(QObject* obj, QEvent *event)
                    return true; 
                } 
                break;
-          case Qt::Key_PageUp: /* pass paging keys to messages widget */
+          case Qt::Key_PageUp:
           case Qt::Key_PageDown:
                if (obj == ui->lineEdit)
                {
@@ -330,10 +336,14 @@ static QString categoryClass(int category)
 {
     switch (category)
     {
-      case RPCConsole::CMD_REQUEST: return "cmd-request";
-      case RPCConsole::CMD_REPLY:   return "cmd-reply";
-      case RPCConsole::CMD_ERROR:   return "cmd-error";
-      default:                      return "misc";
+      case RPCConsole::CMD_REQUEST: 
+           return "cmd-request";
+      case RPCConsole::CMD_REPLY:   
+           return "cmd-reply";
+      case RPCConsole::CMD_ERROR:   
+           return "cmd-error";
+      default:                      
+           return "misc";
     }
 }
 
@@ -345,8 +355,8 @@ void RPCConsole::clear()
     ui->lineEdit->setFocus();
 
     // Add smoothly scaled icon images.
-    // (when using width/height on an img, Qt uses nearest instead of linear interpolation)
-    for (int i=0; ICON_MAPPING[i].url; ++i)
+    // When using width/height on an img, Qt uses nearest instead of linear interpolation
+    for (int i = 0; ICON_MAPPING[i].url; ++i)
     {
         ui->messagesWidget->document()->addResource(
             QTextDocument::ImageResource,

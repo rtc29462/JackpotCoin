@@ -190,7 +190,7 @@ QString TransactionDesc::toHTML(CWallet *wallet, CWalletTx &wtx)
                 //
                 // Debit
                 //
-                BOOST_FOREACH(const CTxOut& txout, wtx.vout)
+                BOOST_FOREACH (const CTxOut& txout, wtx.vout)
                 {
                     if (wallet->IsMine(txout))
                     {
@@ -232,14 +232,14 @@ QString TransactionDesc::toHTML(CWallet *wallet, CWalletTx &wtx)
                 //
                 // Mixed debit transaction
                 //
-                BOOST_FOREACH(const CTxIn& txin, wtx.vin)
+                BOOST_FOREACH (const CTxIn& txin, wtx.vin)
                 {
                     if (wallet->IsMine(txin))
                     {
                         strHTML += "<b>" + tr("Debit") + ":</b> " + BitcoinUnits::formatWithUnit(BitcoinUnits::BTC, -wallet->GetDebit(txin)) + "<br>";
                     }
                 }
-                BOOST_FOREACH(const CTxOut& txout, wtx.vout)
+                BOOST_FOREACH (const CTxOut& txout, wtx.vout)
                 {
                     if (wallet->IsMine(txout))
                     {
@@ -304,7 +304,7 @@ QString TransactionDesc::toHTML(CWallet *wallet, CWalletTx &wtx)
 
             {
                 LOCK(wallet->cs_wallet);
-                BOOST_FOREACH(const CTxIn& txin, wtx.vin)
+                BOOST_FOREACH (const CTxIn& txin, wtx.vin)
                 {
                     COutPoint prevout = txin.prevout;
                     CTransaction prev;

@@ -74,7 +74,6 @@ void SignVerifyMessageDialog::setAddress_VM(QString address)
 void SignVerifyMessageDialog::showTab_SM(bool fShow)
 {
     ui->tabWidget->setCurrentIndex(0);
-
     if (fShow)
     {
         this->show();
@@ -114,7 +113,7 @@ void SignVerifyMessageDialog::on_pasteButton_SM_clicked()
 
 void SignVerifyMessageDialog::on_signMessageButton_SM_clicked()
 {
-    /* Clear old signature to ensure users don't get confused on error with an old signature displayed */
+    // Clear old signature to ensure users don't get confused on error with an old signature displayed
     ui->signatureOut_SM->clear();
 
     CBitcoinAddress addr(ui->addressIn_SM->text().toStdString());
@@ -270,10 +269,9 @@ bool SignVerifyMessageDialog::eventFilter(QObject *object, QEvent *event)
     {
         if (ui->tabWidget->currentIndex() == 0)
         {
-            /* Clear status message on focus change */
+            // Clear status message on focus change
             ui->statusLabel_SM->clear();
-
-            /* Select generated signature */
+            // Select generated signature
             if (object == ui->signatureOut_SM)
             {
                 ui->signatureOut_SM->selectAll();
@@ -282,7 +280,7 @@ bool SignVerifyMessageDialog::eventFilter(QObject *object, QEvent *event)
         }
         else if (ui->tabWidget->currentIndex() == 1)
         {
-            /* Clear status message on focus change */
+            // Clear status message on focus change
             ui->statusLabel_VM->clear();
         }
     }

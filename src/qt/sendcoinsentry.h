@@ -52,6 +52,7 @@ private slots:
 private:
     Ui::SendCoinsEntry *ui;
     WalletModel *model;
+    
 };
 
 #endif // SENDCOINSENTRY_H

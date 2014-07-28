@@ -92,7 +92,8 @@ bool OptionsModel::Upgrade()
 
     if (settings.contains("bImportFinished"))
     {
-        return false; // Already upgraded
+        // Already upgraded
+        return false;
     }
 
     settings.setValue("bImportFinished", true);
@@ -229,7 +230,7 @@ QVariant OptionsModel::data(const QModelIndex & index, int role) const
 
 bool OptionsModel::setData(const QModelIndex & index, const QVariant & value, int role)
 {
-    bool successful = true; /* set to false on parse error */
+    bool successful = true;
     if(role == Qt::EditRole)
     {
         QSettings settings;

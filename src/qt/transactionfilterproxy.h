@@ -29,10 +29,8 @@ public:
     // note Type filter takes a bit field created with TYPE() or ALL_TYPES
     void setTypeFilter(quint32 modes);
     void setMinAmount(qint64 minimum);
-
     // hide invalid transaction record
     void setHideInvalid(bool hideInvalid);
-
     // Set maximum number of rows returned, -1 if unlimited.
     void setLimit(int limit);
 

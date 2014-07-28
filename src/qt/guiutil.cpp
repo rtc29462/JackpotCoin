@@ -145,7 +145,6 @@ bool parseBitcoinURI(const QUrl &uri, SendCoinsRecipient *out)
 bool parseBitcoinURI(QString uri, SendCoinsRecipient *out)
 {
     // Convert jackpotcoin:// to jackpotcoin:
-    //
     //    Cannot handle this later, because bitcoin:// will cause Qt to see the part after // as host,
     //    which will lower-case it (and thus invalidate the address).
     if (uri.startsWith("jackpotcoin://"))
@@ -180,7 +179,7 @@ QString HtmlEscape(const std::string& str, bool fMultiLine)
 
 void copyEntryData(QAbstractItemView *view, int column, int role)
 {
-    if (!view || !view->selectionModel())
+    if ((!view) || (!view->selectionModel()))
     {
         return;
     }
@@ -226,7 +225,7 @@ QString getSaveFileName(QWidget *parent, const QString &caption,
     }
     QString result = QFileDialog::getSaveFileName(parent, caption, myDir, filter, &selectedFilter);
 
-    /* Extract first suffix from filter pattern "Description (*.foo)" or "Description (*.foo *.bar ...) */
+    // Extract first suffix from filter pattern "Description (*.foo)" or "Description (*.foo *.bar ...)
     QRegExp filter_re(".* \\(\\*\\.(.*)[ \\)]");
     QString selectedSuffix;
     if (filter_re.exactMatch(selectedFilter))
@@ -234,13 +233,13 @@ QString getSaveFileName(QWidget *parent, const QString &caption,
         selectedSuffix = filter_re.cap(1);
     }
 
-    /* Add suffix if needed */
+    // Add suffix if needed
     QFileInfo info(result);
     if (!result.isEmpty())
     {
         if (info.suffix().isEmpty() && !selectedSuffix.isEmpty())
         {
-            /* No suffix specified, add selected suffix */
+            // No suffix specified, add selected suffix
             if (!result.endsWith("."))
             {
                 result.append(".");
@@ -249,7 +248,7 @@ QString getSaveFileName(QWidget *parent, const QString &caption,
         }
     }
 
-    /* Return selected suffix if asked to */
+    // Return selected suffix if asked to
     if (selectedSuffixOut)
     {
         *selectedSuffixOut = selectedSuffix;
@@ -296,7 +295,7 @@ void openDebugLogfile()
 {
     boost::filesystem::path pathDebug = GetDataDir() / "debug.log";
 
-    /* Open debug.log with the associated application */
+    // Open debug.log with the associated application
     if (boost::filesystem::exists(pathDebug))
     {
         QDesktopServices::openUrl(QUrl::fromLocalFile(QString::fromStdString(pathDebug.string())));
@@ -339,7 +338,7 @@ boost::filesystem::path static StartupShortcutPath()
 
 bool GetStartOnSystemStartup()
 {
-    // check for Bitcoin.lnk
+    // check for JackpotCoin.lnk
     return boost::filesystem::exists(StartupShortcutPath());
 }
 
@@ -573,12 +572,14 @@ HelpMessageBox::HelpMessageBox(QWidget *parent) :
     setDetailedText(coreOptions + "\n" + uiOptions);
 }
 
+
 void HelpMessageBox::printToConsole()
 {
     // On other operating systems, the expected action is to print the message to the console.
     QString strUsage = header + "\n" + coreOptions + "\n" + uiOptions;
     fprintf(stdout, "%s", strUsage.toStdString().c_str());
 }
+
 
 void HelpMessageBox::showOrPrint()
 {

@@ -56,6 +56,7 @@ private:
     bool fRestartWarningDisplayed_Proxy;
     bool fRestartWarningDisplayed_Lang;
     bool fProxyIpValid;
+    
 };
 
 #endif // OPTIONSDIALOG_H

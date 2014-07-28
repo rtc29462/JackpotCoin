@@ -15,6 +15,7 @@ QT_END_NAMESPACE
 class Notificator: public QObject
 {
     Q_OBJECT
+    
 public:
     // Create a new notificator.
     // note Ownership of trayIcon is not transferred to this object.
@@ -50,6 +51,7 @@ private:
         Growl12,       // Use the Growl 1.2 notification system (Mac only)
         Growl13        // Use the Growl 1.3 notification system (Mac only)
     };
+    
     QString programName;
     Mode mode;
     QSystemTrayIcon *trayIcon;

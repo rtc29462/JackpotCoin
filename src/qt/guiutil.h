@@ -87,6 +87,7 @@ namespace GUIUtil
 
     private:
         int size_threshold;
+        
     };
 
     bool GetStartOnSystemStartup();

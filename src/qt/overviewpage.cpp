@@ -22,6 +22,7 @@ extern bool fWalletUnlockMintOnly;
 class TxViewDelegate : public QAbstractItemDelegate
 {
     Q_OBJECT
+    
 public:
     TxViewDelegate(): QAbstractItemDelegate(), unit(BitcoinUnits::BTC)
     {
@@ -50,7 +51,7 @@ public:
         QVariant value = index.data(Qt::ForegroundRole);
         QColor foreground = option.palette.color(QPalette::Text);
             
-        if(qVariantCanConvert<QColor>(value))
+        if (qVariantCanConvert<QColor>(value))
         {
             foreground = qvariant_cast<QColor>(value);
         }
@@ -58,11 +59,11 @@ public:
         painter->setPen(foreground);
         painter->drawText(addressRect, Qt::AlignLeft|Qt::AlignVCenter, address);
 
-        if(amount < 0)
+        if (amount < 0)
         {
             foreground = COLOR_NEGATIVE;
         }
-        else if(!confirmed)
+        else if (!confirmed)
         {
             foreground = COLOR_UNCONFIRMED;
         }
@@ -74,16 +75,14 @@ public:
         painter->setPen(foreground);
         QString amountText = BitcoinUnits::formatWithUnit(unit, amount, true);
             
-        if(!confirmed)
+        if (!confirmed)
         {
             amountText = QString("[") + amountText + QString("]");
         }
         
         painter->drawText(amountRect, Qt::AlignRight|Qt::AlignVCenter, amountText);
-
         painter->setPen(option.palette.color(QPalette::Text));
         painter->drawText(amountRect, Qt::AlignLeft|Qt::AlignVCenter, GUIUtil::dateTimeStr(date));
-
         painter->restore();
     }
 
@@ -178,7 +177,7 @@ void OverviewPage::setNumTransactions(int count)
 
 void OverviewPage::unlockWallet()
 {
-    if(model->getEncryptionStatus() == WalletModel::Locked)
+    if (model->getEncryptionStatus() == WalletModel::Locked)
     {
         AskPassphraseDialog dlg(AskPassphraseDialog::Unlock, this);
         dlg.setModel(model);

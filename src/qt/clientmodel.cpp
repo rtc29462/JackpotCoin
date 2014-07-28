@@ -64,7 +64,8 @@ QDateTime ClientModel::getLastBlockDate() const
     }
     else
     {
-        return QDateTime::fromTime_t(1398357377); // Genesis block's time
+        // Genesis block's time
+        return QDateTime::fromTime_t(1398357377);
     }
 }
 

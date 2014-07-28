@@ -49,9 +49,13 @@ BitcoinAmountField::BitcoinAmountField(QWidget *parent):
 void BitcoinAmountField::setText(const QString &text)
 {
     if (text.isEmpty())
+    {
         amount->clear();
+    }
     else
+    {
         amount->setValue(text.toDouble());
+    }
 }
 
 

@@ -24,7 +24,7 @@ QRCodeDialog::QRCodeDialog(const QString &addr, const QString &label, bool enabl
     ui->chkReqPayment->setVisible(enableReq);
     ui->lblAmount->setVisible(enableReq);
     ui->lnReqAmount->setVisible(enableReq);
-    
+
     ui->lnLabel->setText(label);
 
     ui->btnSaveAs->setEnabled(false);
@@ -32,10 +32,12 @@ QRCodeDialog::QRCodeDialog(const QString &addr, const QString &label, bool enabl
     genCode();
 }
 
+
 QRCodeDialog::~QRCodeDialog()
 {
     delete ui;
 }
+
 
 void QRCodeDialog::setModel(OptionsModel *model)
 {
@@ -53,11 +55,9 @@ void QRCodeDialog::setModel(OptionsModel *model)
 void QRCodeDialog::genCode()
 {
     QString uri = getURI();
-
     if (uri != "")
     {
         ui->lblQRCode->setText("");
-
         QRcode *code = QRcode_encodeString(uri.toUtf8().constData(), 0, QR_ECLEVEL_L, QR_MODE_8, 1);
         if (!code)
         {
@@ -76,9 +76,7 @@ void QRCodeDialog::genCode()
             }
         }
         QRcode_free(code);
-
         ui->lblQRCode->setPixmap(QPixmap::fromImage(myImage).scaled(300, 300));
-
         ui->outUri->setPlainText(uri);
     }
 }
@@ -88,9 +86,7 @@ QString QRCodeDialog::getURI()
 {
     QString ret = QString("jackpotcoin:%1").arg(address);
     int paramCount = 0;
-
     ui->outUri->clear();
-
     if (ui->chkReqPayment->isChecked())
     {
         if (ui->lnReqAmount->validate())
@@ -106,21 +102,18 @@ QString QRCodeDialog::getURI()
             return QString("");
         }
     }
-
     if (!ui->lnLabel->text().isEmpty())
     {
         QString lbl(QUrl::toPercentEncoding(ui->lnLabel->text()));
         ret += QString("%1label=%2").arg(paramCount == 0 ? "?" : "&").arg(lbl);
         paramCount++;
     }
-
     if (!ui->lnMessage->text().isEmpty())
     {
         QString msg(QUrl::toPercentEncoding(ui->lnMessage->text()));
         ret += QString("%1message=%2").arg(paramCount == 0 ? "?" : "&").arg(msg);
         paramCount++;
     }
-
     // limit URI length to prevent a DoS against the QR-Code dialog
     if (ret.length() > MAX_URI_LENGTH)
     {

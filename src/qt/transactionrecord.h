@@ -37,12 +37,11 @@ public:
     std::string sortKey;
     // Generated (mined) transactions
     int matures_in;
-
     // Reported status
     Status status;
     int64 depth;
-    int64 open_for; // Timestamp if status==OpenUntilDate, otherwise number of blocks
-
+    // Timestamp if status==OpenUntilDate, otherwise number of blocks
+    int64 open_for;
     // Current number of blocks (to know whether cached status is still valid)
     int cur_num_blocks;
     
@@ -80,8 +79,8 @@ public:
     }
 
     TransactionRecord(uint256 hash, int64 time,
-                Type type, const std::string &address,
-                int64 debit, int64 credit):
+            Type type, const std::string &address,
+            int64 debit, int64 credit):
             hash(hash), time(time), type(type), address(address), debit(debit), credit(credit),
             idx(0)
     {

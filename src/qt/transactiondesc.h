@@ -18,8 +18,8 @@ public:
     
 private:
     TransactionDesc() {}
-
     static QString FormatTxStatus(const CWalletTx& wtx);
+    
 };
 
 #endif // TRANSACTIONDESC_H

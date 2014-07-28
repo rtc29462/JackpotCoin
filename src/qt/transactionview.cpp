@@ -70,9 +70,9 @@ TransactionView::TransactionView(QWidget *parent) :
 
     typeWidget->addItem(tr("All"), TransactionFilterProxy::ALL_TYPES);
     typeWidget->addItem(tr("Received with"), TransactionFilterProxy::TYPE(TransactionRecord::RecvWithAddress) |
-                                        TransactionFilterProxy::TYPE(TransactionRecord::RecvFromOther));
+                                             TransactionFilterProxy::TYPE(TransactionRecord::RecvFromOther));
     typeWidget->addItem(tr("Sent to"), TransactionFilterProxy::TYPE(TransactionRecord::SendToAddress) |
-                                  TransactionFilterProxy::TYPE(TransactionRecord::SendToOther));
+                                       TransactionFilterProxy::TYPE(TransactionRecord::SendToOther));
     typeWidget->addItem(tr("To yourself"), TransactionFilterProxy::TYPE(TransactionRecord::SendToSelf));
     typeWidget->addItem(tr("Stacked"), TransactionFilterProxy::TYPE(TransactionRecord::StakeMint));
     typeWidget->addItem(tr("Mined"), TransactionFilterProxy::TYPE(TransactionRecord::Generated));
@@ -82,14 +82,12 @@ TransactionView::TransactionView(QWidget *parent) :
 
     addressWidget = new QLineEdit(this);
 #if QT_VERSION >= 0x040700
-    // Do not move this to the XML file, Qt before 4.7 will choke on it
     addressWidget->setPlaceholderText(tr("Enter address or label to search"));
 #endif
     hlayout->addWidget(addressWidget);
 
     amountWidget = new QLineEdit(this);
 #if QT_VERSION >= 0x040700
-    // Do not move this to the XML file, Qt before 4.7 will choke on it
     amountWidget->setPlaceholderText(tr("Min amount"));
 #endif
 #ifdef Q_OS_MAC
@@ -113,7 +111,7 @@ TransactionView::TransactionView(QWidget *parent) :
     
     // Cover scroll bar width with spacing
 #ifdef Q_OS_MAC
-    hlayout->addSpacing(width+2);
+    hlayout->addSpacing(width + 2);
 #else
     hlayout->addSpacing(width);
 #endif
@@ -125,7 +123,6 @@ TransactionView::TransactionView(QWidget *parent) :
 
     transactionView = view;
 
-    // Actions
     QAction *copyAddressAction = new QAction(tr("Copy address"), this);
     QAction *copyLabelAction = new QAction(tr("Copy label"), this);
     QAction *copyAmountAction = new QAction(tr("Copy amount"), this);
@@ -141,7 +138,6 @@ TransactionView::TransactionView(QWidget *parent) :
     contextMenu->addAction(editLabelAction);
     contextMenu->addAction(showDetailsAction);
 
-    // Connect actions
     connect(dateWidget, SIGNAL(activated(int)), this, SLOT(chooseDate(int)));
     connect(typeWidget, SIGNAL(activated(int)), this, SLOT(chooseType(int)));
     connect(addressWidget, SIGNAL(textChanged(QString)), this, SLOT(changedPrefix(QString)));
@@ -195,40 +191,26 @@ void TransactionView::chooseDate(int idx)
         switch (dateWidget->itemData(idx).toInt())
         {
           case All:
-               transactionProxyModel->setDateRange(
-                        TransactionFilterProxy::MIN_DATE,
-                        TransactionFilterProxy::MAX_DATE);
+               transactionProxyModel->setDateRange(TransactionFilterProxy::MIN_DATE, TransactionFilterProxy::MAX_DATE);
                break;
           case Today:
-               transactionProxyModel->setDateRange(
-                        QDateTime(current),
-                        TransactionFilterProxy::MAX_DATE);
+               transactionProxyModel->setDateRange(QDateTime(current), TransactionFilterProxy::MAX_DATE);
                break;
           case ThisWeek: 
-               {
-               // Find last Monday
+          {
                QDate startOfWeek = current.addDays(0 - (current.dayOfWeek() - 1));
-               transactionProxyModel->setDateRange(
-                        QDateTime(startOfWeek),
-                        TransactionFilterProxy::MAX_DATE);
-        
-               } 
+               transactionProxyModel->setDateRange(QDateTime(startOfWeek), TransactionFilterProxy::MAX_DATE);
+          } 
                break;
           case ThisMonth:
-               transactionProxyModel->setDateRange(
-                        QDateTime(QDate(current.year(), current.month(), 1)),
-                        TransactionFilterProxy::MAX_DATE);
-                break;
+               transactionProxyModel->setDateRange(QDateTime(QDate(current.year(), current.month(), 1)), TransactionFilterProxy::MAX_DATE);
+               break;
           case LastMonth:
-               transactionProxyModel->setDateRange(
-                        QDateTime(QDate(current.year(), current.month() - 1, 1)),
-                        QDateTime(QDate(current.year(), current.month(), 1)));
-                break;
+               transactionProxyModel->setDateRange(QDateTime(QDate(current.year(), current.month() - 1, 1)), QDateTime(QDate(current.year(), current.month(), 1)));
+               break;
           case ThisYear:
-               transactionProxyModel->setDateRange(
-                        QDateTime(QDate(current.year(), 1, 1)),
-                        TransactionFilterProxy::MAX_DATE);
-                break;
+               transactionProxyModel->setDateRange(QDateTime(QDate(current.year(), 1, 1)), TransactionFilterProxy::MAX_DATE);
+               break;
           case Range:
                dateRangeWidget->setVisible(true);
                dateRangeChanged();
@@ -434,9 +416,7 @@ void TransactionView::dateRangeChanged()
 {
     if (transactionProxyModel)
     {
-        transactionProxyModel->setDateRange(
-                QDateTime(dateFrom->date()),
-                QDateTime(dateTo->date()).addDays(1));
+        transactionProxyModel->setDateRange(QDateTime(dateFrom->date()), QDateTime(dateTo->date()).addDays(1));
     }
 }
 

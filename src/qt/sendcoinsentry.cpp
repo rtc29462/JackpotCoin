@@ -22,7 +22,7 @@ SendCoinsEntry::SendCoinsEntry(QWidget *parent) :
     ui->payToLayout->setSpacing(4);
 #endif
 #if QT_VERSION >= 0x040700
-    /* Do not move this to the XML file, Qt before 4.7 will choke on it */
+    // Do not move this to the XML file, Qt before 4.7 will choke on it
     ui->addAsLabel->setPlaceholderText(tr("Enter a label for this address to add it to your address book"));
     ui->payTo->setPlaceholderText(tr("Enter a valid JackpotCoin address"));
 #endif
@@ -97,7 +97,6 @@ void SendCoinsEntry::clear()
     ui->addAsLabel->clear();
     ui->payAmount->clear();
     ui->payTo->setFocus();
-    // update the display unit, to not use the default ("BTC")
     updateDisplayUnit();
 }
 
@@ -118,7 +117,7 @@ bool SendCoinsEntry::validate()
     }
     else
     {
-        if(ui->payAmount->value() <= 0)
+        if (ui->payAmount->value() <= 0)
         {
             // Cannot send 0 coins or less
             ui->payAmount->setValid(false);

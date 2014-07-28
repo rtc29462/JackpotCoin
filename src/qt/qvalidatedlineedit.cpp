@@ -28,7 +28,6 @@ void QValidatedLineEdit::setValid(bool valid)
 
 void QValidatedLineEdit::focusInEvent(QFocusEvent *evt)
 {
-    // Clear invalid flag on focus
     setValid(true);
     QLineEdit::focusInEvent(evt);
 }

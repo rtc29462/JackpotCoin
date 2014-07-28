@@ -23,7 +23,6 @@ public:
     void setModel(WalletModel *model);
     void setAddress_SM(QString address);
     void setAddress_VM(QString address);
-
     void showTab_SM(bool fShow);
     void showTab_VM(bool fShow);
 
@@ -45,6 +44,7 @@ private slots:
     void on_addressBookButton_VM_clicked();
     void on_verifyMessageButton_VM_clicked();
     void on_clearButton_VM_clicked();
+    
 };
 
 #endif // SIGNVERIFYMESSAGEDIALOG_H

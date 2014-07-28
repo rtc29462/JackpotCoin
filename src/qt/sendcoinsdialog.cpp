@@ -37,7 +37,7 @@ SendCoinsDialog::SendCoinsDialog(QWidget *parent) :
 #endif
 
 #if QT_VERSION >= 0x040700
-     /* Do not move this to the XML file, Qt before 4.7 will choke on it */
+     // Do not move this to the XML file, Qt before 4.7 will choke on it
      ui->lineEditCoinControlChange->setPlaceholderText(tr("Enter a JackpotCoin address"));
 #endif
 
@@ -85,7 +85,6 @@ SendCoinsDialog::SendCoinsDialog(QWidget *parent) :
 void SendCoinsDialog::setModel(WalletModel *model)
 {
     this->model = model;
-
     for (int i = 0; i < ui->entries->count(); ++i)
     {
         SendCoinsEntry *entry = qobject_cast<SendCoinsEntry*>(ui->entries->itemAt(i)->widget());
@@ -142,7 +141,7 @@ void SendCoinsDialog::on_sendButton_clicked()
         }
     }
 
-    if (!valid || recipients.isEmpty())
+    if ((!valid) || recipients.isEmpty())
     {
         return;
     }
@@ -180,7 +179,6 @@ void SendCoinsDialog::on_sendButton_clicked()
     }
 
     WalletModel::SendCoinsReturn sendstatus;
-
     if ((!model->getOptionsModel()) || (!model->getOptionsModel()->getCoinControlFeatures()))
     {
         sendstatus = model->sendCoins(recipients);
@@ -190,52 +188,6 @@ void SendCoinsDialog::on_sendButton_clicked()
         sendstatus = model->sendCoins(recipients, CoinControlDialog::coinControl);
     }
     
-    switch(sendstatus.status)
-    {
-      case WalletModel::InvalidAddress:
-           QMessageBox::warning(this, tr("Send Coins"),
-               tr("The recipient address is not valid, please recheck."),
-               QMessageBox::Ok, QMessageBox::Ok);
-           break;
-      case WalletModel::InvalidAmount:
-           QMessageBox::warning(this, tr("Send Coins"),
-               tr("The amount to pay must be larger than 0."),
-               QMessageBox::Ok, QMessageBox::Ok);
-           break;
-      case WalletModel::AmountExceedsBalance:
-           QMessageBox::warning(this, tr("Send Coins"),
-               tr("The amount exceeds your balance."),
-               QMessageBox::Ok, QMessageBox::Ok);
-           break;
-      case WalletModel::AmountWithFeeExceedsBalance:
-           QMessageBox::warning(this, tr("Send Coins"),
-               tr("The total exceeds your balance when the %1 transaction fee is included.").
-               arg(BitcoinUnits::formatWithUnit(BitcoinUnits::BTC, sendstatus.fee)),
-               QMessageBox::Ok, QMessageBox::Ok);
-           break;
-      case WalletModel::DuplicateAddress:
-           QMessageBox::warning(this, tr("Send Coins"),
-               tr("Duplicate address found, can only send to each address once per send operation."),
-               QMessageBox::Ok, QMessageBox::Ok);
-           break;
-      case WalletModel::TransactionCreationFailed:
-           QMessageBox::warning(this, tr("Send Coins"),
-               tr("Error: Transaction creation failed!"),
-               QMessageBox::Ok, QMessageBox::Ok);
-           break;
-      case WalletModel::TransactionCommitFailed:
-           QMessageBox::warning(this, tr("Send Coins"),
-               tr("Error: The transaction was rejected. This might happen if some of the coins in your wallet were already spent, such as if you used a copy of wallet.dat and coins were spent in the copy but not marked as spent here."),
-               QMessageBox::Ok, QMessageBox::Ok);
-           break;
-      case WalletModel::Aborted: // User aborted, nothing to do
-           break;
-      case WalletModel::OK:
-           accept();
-           CoinControlDialog::coinControl->UnSelectAll();
-           coinControlUpdateLabels();
-           break;
-    }
     fNewRecipientAllowed = true;
 }
 
@@ -243,7 +195,7 @@ void SendCoinsDialog::on_sendButton_clicked()
 void SendCoinsDialog::clear()
 {
     // Remove entries until only one left
-    while(ui->entries->count())
+    while (ui->entries->count())
     {
         delete ui->entries->takeAt(0)->widget();
     }
@@ -359,12 +311,11 @@ bool SendCoinsDialog::handleURI(const QString &uri)
     if (GUIUtil::parseBitcoinURI(uri, &rv))
     {
         CBitcoinAddress address(rv.address.toStdString());
-        if (!address.IsValid())
+        if (address.IsValid())
         {
-            return false;
+            pasteEntry(rv);
+            return true;
         }
-        pasteEntry(rv);
-        return true;
     }
     return false;
 }
@@ -444,7 +395,8 @@ void SendCoinsDialog::coinControlClipboardChange()
 void SendCoinsDialog::coinControlFeatureChanged(bool checked)
 {
     ui->frameCoinControl->setVisible(checked);
-    if (!checked && model) // coin control features disabled
+     // coin control features disabled
+    if (!checked && model)
     {
         CoinControlDialog::coinControl->SetNull();
     }
@@ -539,7 +491,7 @@ void SendCoinsDialog::coinControlUpdateLabels()
         if (CoinControlDialog::coinControl->HasSelected())
         {
             // actual coin control calculation
-             CoinControlDialog::updateLabels(model, this);
+            CoinControlDialog::updateLabels(model, this);
             // show coin control stats
             ui->labelCoinControlAutomaticallySelected->hide();
             ui->widgetCoinControl->show();

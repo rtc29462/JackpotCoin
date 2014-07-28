@@ -138,7 +138,6 @@ QString BitcoinUnits::format(int unit, qint64 n, bool fPlus)
         ++nTrim;
     }
     remainder_str.chop(nTrim);
-
     if (n < 0)
     {
         quotient_str.insert(0, '-');

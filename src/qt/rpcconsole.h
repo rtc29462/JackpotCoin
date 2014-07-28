@@ -62,6 +62,7 @@ private:
     int historyPtr;
 
     void startExecutor();
+    
 };
 
 #endif // RPCCONSOLE_H

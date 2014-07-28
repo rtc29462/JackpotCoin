@@ -16,6 +16,7 @@
 #if QT_VERSION < 0x050000
 #include <QTextCodec>
 #endif
+#include <QBitmap>
 #include <QLocale>
 #include <QTranslator>
 #include <QSplashScreen>
@@ -216,11 +217,13 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    QSplashScreen splash(QPixmap(":/images/splash"), 0);
+    QPixmap pixmap(":/images/splash");
+    QSplashScreen splash(pixmap, 0);
     if (GetBoolArg("-splash", true) && !GetBoolArg("-min"))
     {
+        // splash.setMask(pixmap.mask());
         splash.show();
-        splash.setAutoFillBackground(true);
+        // splash.setAutoFillBackground(true);
         splashref = &splash;
     }
 

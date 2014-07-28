@@ -34,21 +34,22 @@ struct TxLessThan
 {
     bool operator()(const TransactionRecord &a, const TransactionRecord &b) const
     {
-        return a.hash < b.hash;
+        return (a.hash < b.hash);
     }
     bool operator()(const TransactionRecord &a, const uint256 &b) const
     {
-        return a.hash < b;
+        return (a.hash < b);
     }
     bool operator()(const uint256 &a, const TransactionRecord &b) const
     {
-        return a < b.hash;
+        return (a < b.hash);
     }
 };
 
 // Private implementation
 class TransactionTablePriv
 {
+    
 public:
     TransactionTablePriv(CWallet *wallet, TransactionTableModel *parent):
             wallet(wallet),
@@ -92,10 +93,8 @@ public:
             bool inWallet = mi != wallet->mapWallet.end();
 
             // Find bounds of this transaction in model
-            QList<TransactionRecord>::iterator lower = qLowerBound(
-                cachedWallet.begin(), cachedWallet.end(), hash, TxLessThan());
-            QList<TransactionRecord>::iterator upper = qUpperBound(
-                cachedWallet.begin(), cachedWallet.end(), hash, TxLessThan());
+            QList<TransactionRecord>::iterator lower = qLowerBound(cachedWallet.begin(), cachedWallet.end(), hash, TxLessThan());
+            QList<TransactionRecord>::iterator upper = qUpperBound(cachedWallet.begin(), cachedWallet.end(), hash, TxLessThan());
             int lowerIndex = (lower - cachedWallet.begin());
             int upperIndex = (upper - cachedWallet.begin());
             bool inModel = (lower != upper);
@@ -105,9 +104,9 @@ public:
 
             if(status == CT_UPDATED)
             {
-                if (showTransaction && !inModel)
+                if (showTransaction && (!inModel))
                 {
-                     // Not in model, but want to show, treat as new
+                    // Not in model, but want to show, treat as new
                     status = CT_NEW;
                 }
                 if (!showTransaction && inModel)
@@ -140,7 +139,7 @@ public:
                        // only if something to insert
                        if (!toInsert.isEmpty())
                        {
-                           parent->beginInsertRows(QModelIndex(), lowerIndex, lowerIndex+toInsert.size()-1);
+                           parent->beginInsertRows(QModelIndex(), lowerIndex, lowerIndex+toInsert.size() - 1);
                            int insert_idx = lowerIndex;
                            foreach (const TransactionRecord &rec, toInsert)
                            {
@@ -158,7 +157,7 @@ public:
                        break;
                    }
                    // Removed -- remove entire transaction from table
-                   parent->beginRemoveRows(QModelIndex(), lowerIndex, upperIndex-1);
+                   parent->beginRemoveRows(QModelIndex(), lowerIndex, upperIndex - 1);
                    cachedWallet.erase(lower, upper);
                    parent->endRemoveRows();
                    break;
@@ -186,13 +185,11 @@ public:
             // simply re-use the cached status.
             if (rec->statusUpdateNeeded())
             {
+                LOCK(wallet->cs_wallet);
+                std::map<uint256, CWalletTx>::iterator mi = wallet->mapWallet.find(rec->hash);
+                if (mi != wallet->mapWallet.end())
                 {
-                    LOCK(wallet->cs_wallet);
-                    std::map<uint256, CWalletTx>::iterator mi = wallet->mapWallet.find(rec->hash);
-                    if (mi != wallet->mapWallet.end())
-                    {
-                        rec->updateStatus(mi->second);
-                    }
+                    rec->updateStatus(mi->second);
                 }
             }
             return rec;
@@ -283,7 +280,6 @@ int TransactionTableModel::columnCount(const QModelIndex &parent) const
 QString TransactionTableModel::formatTxStatus(const TransactionRecord *wtx) const
 {
     QString status;
-
     switch(wtx->status.status)
     {
       case TransactionStatus::OpenUntilBlock:
@@ -317,7 +313,6 @@ QString TransactionTableModel::formatTxStatus(const TransactionRecord *wtx) cons
            status = tr("Generated but not accepted!");
            break;
     }
-
     return status;
 }
 
@@ -467,11 +462,16 @@ QVariant TransactionTableModel::txStatusDecoration(const TransactionRecord *wtx)
       case TransactionStatus::Confirming:
            switch(wtx->status.depth)
            {
-             case 1:  return QIcon(":/icons/transaction_1");
-             case 2:  return QIcon(":/icons/transaction_2");
-             case 3:  return QIcon(":/icons/transaction_3");
-             case 4:  return QIcon(":/icons/transaction_4");
-             default: return QIcon(":/icons/transaction_5");
+             case 1:  
+                  return QIcon(":/icons/transaction_1");
+             case 2:  
+                  return QIcon(":/icons/transaction_2");
+             case 3:  
+                  return QIcon(":/icons/transaction_3");
+             case 4: 
+                  return QIcon(":/icons/transaction_4");
+             default: 
+                  return QIcon(":/icons/transaction_5");
            };
       case TransactionStatus::Confirmed:
            return QIcon(":/icons/transaction_confirmed");

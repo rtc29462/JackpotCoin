@@ -162,7 +162,7 @@ WalletModel::SendCoinsReturn WalletModel::sendCoins(const QList<SendCoinsRecipie
     QSet<QString> setAddress;
     QString hex;
 
-    if(recipients.empty())
+    if (recipients.empty())
     {
         return OK;
     }
@@ -333,7 +333,9 @@ bool WalletModel::changePassphrase(const SecureString &oldPass, const SecureStri
     bool retval;
     {
         LOCK(wallet->cs_wallet);
-        wallet->Lock(); // Make sure wallet is locked before attempting pass change
+        
+        // Make sure wallet is locked before attempting pass change
+        wallet->Lock();
         retval = wallet->ChangeWalletPassphrase(oldPass, newPass);
     }
     return retval;
@@ -376,7 +378,6 @@ static void NotifyTransactionChanged(WalletModel *walletmodel, CWallet *wallet, 
 
 void WalletModel::subscribeToCoreSignals()
 {
-    // Connect signals to wallet
     wallet->NotifyStatusChanged.connect(boost::bind(&NotifyKeyStoreStatusChanged, this, _1));
     wallet->NotifyAddressBookChanged.connect(boost::bind(NotifyAddressBookChanged, this, _1, _2, _3, _4, _5));
     wallet->NotifyTransactionChanged.connect(boost::bind(NotifyTransactionChanged, this, _1, _2, _3));
@@ -385,7 +386,6 @@ void WalletModel::subscribeToCoreSignals()
 
 void WalletModel::unsubscribeFromCoreSignals()
 {
-    // Disconnect signals from wallet
     wallet->NotifyStatusChanged.disconnect(boost::bind(&NotifyKeyStoreStatusChanged, this, _1));
     wallet->NotifyAddressBookChanged.disconnect(boost::bind(NotifyAddressBookChanged, this, _1, _2, _3, _4, _5));
     wallet->NotifyTransactionChanged.disconnect(boost::bind(NotifyTransactionChanged, this, _1, _2, _3));
@@ -467,7 +467,6 @@ void WalletModel::getOutputs(const std::vector<COutPoint>& vOutpoints, std::vect
     }
 }
  
- 
 // AvailableCoins + LockedCoins grouped by wallet address (put change in one group with wallet address) 
 void WalletModel::listCoins(std::map<QString, std::vector<COutput> >& mapCoins) const
 {
@@ -507,28 +506,4 @@ void WalletModel::listCoins(std::map<QString, std::vector<COutput> >& mapCoins) 
             mapCoins[CBitcoinAddress(address).ToString().c_str()].push_back(out);
         }
     }
-}
- 
- 
-bool WalletModel::isLockedCoin(uint256 hash, unsigned int n) const
-{
-    return false;
-}
- 
- 
-void WalletModel::lockCoin(COutPoint& output)
-{
-    return;
-}
- 
- 
-void WalletModel::unlockCoin(COutPoint& output)
-{
-    return;
-}
- 
- 
-void WalletModel::listLockedCoins(std::vector<COutPoint>& vOutpts)
-{
-    return;
 }

@@ -4,7 +4,6 @@
 CoinControlTreeWidget::CoinControlTreeWidget(QWidget *parent) :
     QTreeWidget(parent)
 {
-	 
 }
 
 void CoinControlTreeWidget::keyPressEvent(QKeyEvent *event)
