@@ -221,51 +221,46 @@ QVariant AddressTableModel::data(const QModelIndex &index, int role) const
 
 bool AddressTableModel::setData(const QModelIndex & index, const QVariant & value, int role)
 {
-    if (!index.isValid())
+    if (index.isValid())
     {
-        return false;
-    }
-    AddressTableEntry *rec = static_cast<AddressTableEntry*>(index.internalPointer());
-
-    editStatus = OK;
-
-    if (role == Qt::EditRole)
-    {
-        switch (index.column())
+        AddressTableEntry *rec = static_cast<AddressTableEntry*>(index.internalPointer());   
+        editStatus = OK; 
+        if (role == Qt::EditRole)
         {
-          case Label:
-               // Do nothing, if old label == new label
-               if (rec->label == value.toString())
-               {
-                   editStatus = NO_CHANGES;
-                   return false;
-               }
-               wallet->SetAddressBookName(CBitcoinAddress(rec->address.toStdString()).Get(), value.toString().toStdString());
-               rec->label = value.toString();
-               break;
-          case Address:
-               // Do nothing, if old address == new address
-               if (CBitcoinAddress(rec->address.toStdString()) == CBitcoinAddress(value.toString().toStdString()))
-               {
-                   editStatus = NO_CHANGES;
-                   return false;
-               }
-               // Refuse to set invalid address, set error status and return false
-               else if (!walletModel->validateAddress(value.toString()))
-               {
-                   editStatus = INVALID_ADDRESS;
-                   return false;
-               }
-               // Check for duplicate addresses to prevent accidental deletion of addresses, if you try
-               // to paste an existing address over another address (with a different label)
-               else if (wallet->mapAddressBook.count(CBitcoinAddress(value.toString().toStdString()).Get()))
-               {
-                   editStatus = DUPLICATE_ADDRESS;
-                   return false;
-               }
-               // Double-check that we're not overwriting a receiving address
-               else if (rec->type == AddressTableEntry::Sending)
-               {
+            switch (index.column())
+            {
+              case Label:
+                   // Do nothing, if old label == new label
+                   if (rec->label == value.toString())
+                   {
+                       editStatus = NO_CHANGES;
+                       return false;
+                   }
+                   wallet->SetAddressBookName(CBitcoinAddress(rec->address.toStdString()).Get(), value.toString().toStdString());
+                   rec->label = value.toString();
+                   break;
+              case Address:
+                   // Do nothing, if old address == new address
+                   if (CBitcoinAddress(rec->address.toStdString()) == CBitcoinAddress(value.toString().toStdString()))
+                   {
+                       editStatus = NO_CHANGES;
+                       return false;
+                   }
+                   // Refuse to set invalid address, set error status and return false
+                   else if (!walletModel->validateAddress(value.toString()))
+                   {
+                       editStatus = INVALID_ADDRESS;
+                       return false;
+                   }
+                   // Check for duplicate addresses to prevent accidental deletion of addresses, if you try
+                   // to paste an existing address over another address (with a different label)
+                   else if (wallet->mapAddressBook.count(CBitcoinAddress(value.toString().toStdString()).Get()))
+                   {
+                       editStatus = DUPLICATE_ADDRESS;
+                       return false;
+                   }
+                   // Double-check that we're not overwriting a receiving address
+                   else if (rec->type == AddressTableEntry::Sending)
                    {
                        LOCK(wallet->cs_wallet);
                        // Remove old entry
@@ -273,10 +268,11 @@ bool AddressTableModel::setData(const QModelIndex & index, const QVariant & valu
                        // Add new entry with new address
                        wallet->SetAddressBookName(CBitcoinAddress(value.toString().toStdString()).Get(), rec->label.toStdString());
                    }
-               }
-               break;
+                   break;
+            }
+    
+            return true;
         }
-        return true;
     }
     return false;
 }
@@ -297,21 +293,24 @@ QVariant AddressTableModel::headerData(int section, Qt::Orientation orientation,
 
 Qt::ItemFlags AddressTableModel::flags(const QModelIndex & index) const
 {
-    if (!index.isValid())
+    if (index.isValid())
+    {
+        AddressTableEntry *rec = static_cast<AddressTableEntry*>(index.internalPointer());
+    
+        Qt::ItemFlags retval = Qt::ItemIsSelectable | Qt::ItemIsEnabled;
+        // Can edit address and label for sending addresses,
+        // and only label for receiving addresses.
+        if(rec->type == AddressTableEntry::Sending ||
+          (rec->type == AddressTableEntry::Receiving && index.column()==Label))
+        {
+            retval |= Qt::ItemIsEditable;
+        }
+        return retval;
+    }
+    else 
     {
         return 0;
     }
-    AddressTableEntry *rec = static_cast<AddressTableEntry*>(index.internalPointer());
-
-    Qt::ItemFlags retval = Qt::ItemIsSelectable | Qt::ItemIsEnabled;
-    // Can edit address and label for sending addresses,
-    // and only label for receiving addresses.
-    if(rec->type == AddressTableEntry::Sending ||
-      (rec->type == AddressTableEntry::Receiving && index.column()==Label))
-    {
-        retval |= Qt::ItemIsEditable;
-    }
-    return retval;
 }
 
 
@@ -346,19 +345,20 @@ QString AddressTableModel::addRow(const QString &type, const QString &label, con
 
     if (type == Send)
     {
-        if (!walletModel->validateAddress(address))
+        if (walletModel->validateAddress(address))
         {
-            editStatus = INVALID_ADDRESS;
-            return QString();
-        }
-        // Check for duplicate addresses
-        {
+            // Check for duplicate addresses
             LOCK(wallet->cs_wallet);
             if (wallet->mapAddressBook.count(CBitcoinAddress(strAddress).Get()))
             {
                 editStatus = DUPLICATE_ADDRESS;
                 return QString();
             }
+        }
+        else 
+        {
+            editStatus = INVALID_ADDRESS;
+            return QString();
         }
     }
     else if (type == Receive)

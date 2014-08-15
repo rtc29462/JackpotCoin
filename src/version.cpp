@@ -11,7 +11,7 @@
 const std::string CLIENT_NAME("JackpotCoin");
 
 // Client version number
-#define CLIENT_VERSION_SUFFIX   "-beta"
+#define CLIENT_VERSION_SUFFIX   ""
 
 
 // The following part of the code determines the CLIENT_BUILD variable.
@@ -34,7 +34,7 @@ const std::string CLIENT_NAME("JackpotCoin");
 #endif
 
 // git will put "#define GIT_ARCHIVE 1" on the next line inside archives. 
-#define GIT_ARCHIVE 0
+// #define GIT_ARCHIVE ""
 #ifdef GIT_ARCHIVE
 #    define GIT_COMMIT_ID ""
 #    define GIT_COMMIT_DATE "$Format:%cD"

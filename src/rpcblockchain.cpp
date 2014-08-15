@@ -46,7 +46,8 @@ double GetDifficulty(const CBlockIndex* blockindex)
 double GetPoWMHashPS()
 {
     int nPoWInterval = 72;
-    int64 nTargetSpacingWorkMin = 30, nTargetSpacingWork = 30;
+    int64 nTargetSpacingWorkMin = 120;
+    int64 nTargetSpacingWork = 120;
 
     CBlockIndex* pindex = pindexGenesisBlock;
     CBlockIndex* pindexPrevWork = pindexGenesisBlock;
@@ -71,7 +72,8 @@ double GetPoSKernelPS()
 {
     int nPoSInterval = 72;
     double dStakeKernelsTriedAvg = 0;
-    int nStakesHandled = 0, nStakesTime = 0;
+    int nStakesHandled = 0;
+    int nStakesTime = 0;
 
     CBlockIndex* pindex = pindexBest;;
     CBlockIndex* pindexPrevStake = NULL;
@@ -89,7 +91,7 @@ double GetPoSKernelPS()
         pindex = pindex->pprev;
     }
 
-    return dStakeKernelsTriedAvg / nStakesTime;
+    return nStakesTime ? dStakeKernelsTriedAvg / nStakesTime : 0;
 }
 
 Object blockToJSON(const CBlock& block, const CBlockIndex* blockindex, bool fPrintTransactionDetail)
@@ -139,26 +141,33 @@ Object blockToJSON(const CBlock& block, const CBlockIndex* blockindex, bool fPri
 
     result.push_back(Pair("tx", txinfo));
 
+    if (block.IsProofOfStake())
+    {
+        result.push_back(Pair("signature", HexStr(block.vchBlockSig.begin(), block.vchBlockSig.end())));
+    }
+ 
     return result;
 }
 
 Value getbestblockhash(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
+    {
         throw runtime_error(
             "getbestblockhash\n"
             "Returns the hash of the best block in the longest block chain.");
-
+    }
     return hashBestChain.GetHex();
 }
 
 Value getblockcount(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
+    {
         throw runtime_error(
             "getblockcount\n"
             "Returns the number of blocks in the longest block chain.");
-
+    }
     return nBestHeight;
 }
 
@@ -166,14 +175,15 @@ Value getblockcount(const Array& params, bool fHelp)
 Value getdifficulty(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
+    {
         throw runtime_error(
             "getdifficulty\n"
             "Returns the difficulty as a multiple of the minimum difficulty.");
-
+    }
     Object obj;
-    obj.push_back(Pair("proof-of-work",        GetDifficulty()));
-    obj.push_back(Pair("proof-of-stake",       GetDifficulty(GetLastBlockIndex(pindexBest, true))));
-    obj.push_back(Pair("search-interval",      (int)nLastCoinStakeSearchInterval));
+    obj.push_back(Pair("proof-of-work",   GetDifficulty()));
+    obj.push_back(Pair("proof-of-stake",  GetDifficulty(GetLastBlockIndex(pindexBest, true))));
+    obj.push_back(Pair("search-interval", (int)nLastCoinStakeSearchInterval));
     return obj;
 }
 
@@ -287,16 +297,22 @@ Value getcheckpoint(const Array& params, bool fHelp)
 
     // Check that the block satisfies synchronized checkpoint
     if (CheckpointsMode == Checkpoints::STRICT)
+    {
         result.push_back(Pair("policy", "strict"));
-
-    if (CheckpointsMode == Checkpoints::ADVISORY)
+    } 
+    else if (CheckpointsMode == Checkpoints::ADVISORY)
+    {
         result.push_back(Pair("policy", "advisory"));
-
-    if (CheckpointsMode == Checkpoints::PERMISSIVE)
+    }
+    else if (CheckpointsMode == Checkpoints::PERMISSIVE)
+    {
         result.push_back(Pair("policy", "permissive"));
+    }
 
     if (mapArgs.count("-checkpointkey"))
+    {
         result.push_back(Pair("checkpointmaster", true));
-
+    }
+ 
     return result;
 }

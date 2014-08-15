@@ -77,7 +77,7 @@ int64 nHPSTimerStart;
 // Settings
 int64 nTransactionFee = MIN_TX_FEE;
 
-static const int NUM_OF_POW_CHECKPOINT = 6;
+static const int NUM_OF_POW_CHECKPOINT = 23;
 static const int checkpointPoWHeight[NUM_OF_POW_CHECKPOINT][2] =
 {
 	{ 25000,  5587},
@@ -85,7 +85,24 @@ static const int checkpointPoWHeight[NUM_OF_POW_CHECKPOINT][2] =
 	{ 75000, 12354},
 	{100000, 15639},
 	{125000, 18946},
-    {150000, 22309}
+    {150000, 22309},
+    {175000, 25648},
+    {200000, 28918},
+    {225000, 32194},
+    {250000, 35406},
+    {275000, 38599},
+    {300000, 41591},
+    {325000, 44482},
+    {350000, 47332},
+    {375000, 50160},
+    {400000, 53062},
+    {425000, 55947},
+    {450000, 61201},
+    {475000, 65087},
+    {500000, 68169},
+    {525000, 71250},
+    {550000, 74229},
+    {575000, 77161}
 };
 
 //
@@ -311,36 +328,29 @@ bool CTransaction::IsStandard() const
 
     unsigned int nDataOut = 0;
     txnouttype whichType;
-    BOOST_FOREACH(const CTxIn& txin, vin)
+    BOOST_FOREACH (const CTxIn& txin, vin)
     {
         // Biggest 'standard' txin is a 3-signature 3-of-3 CHECKMULTISIG
         // pay-to-script-hash, which is 3 ~80-byte signatures, 3
         // ~65-byte public keys, plus a few script ops.
         if (txin.scriptSig.size() > 500)
+        {
             return false;
+        }
         if (!txin.scriptSig.IsPushOnly())
+        {
             return false;
+        }
     }
-    BOOST_FOREACH(const CTxOut& txout, vout)
+    BOOST_FOREACH (const CTxOut& txout, vout)
     {
         if (!::IsStandard(txout.scriptPubKey, whichType)) {
             return false;
         }
-        if (whichType == TX_NULL_DATA)
-            nDataOut++;
-        else {
-            if (txout.nValue == 0) {
-                return false;
-            }
-            // if (fEnforceCanonical && !txout.scriptPubKey.HasCanonicalPushes()) {
-            //     return false;
-            // }
+        if (txout.nValue == 0) 
+        {
+            return false;
         }
-    }
-
-    // only one OP_RETURN txout is permitted
-    if (nDataOut > 1) {
-        return false;
     }
 
     return true;
@@ -979,21 +989,29 @@ int CountPowDelta(CBlockIndex* pindex, int superBlock)
 	int count = 0;
 	int height = pindex->nHeight + 1;
 	int delta = height - superBlock;
-	if(delta <= 0)
+	
+	if (delta <= 0)
+	{
 		return count;
-
+    } 
+    
     while (pindex)
 	{
-		if(pindex->IsProofOfStake() == false)
+		if (pindex->IsProofOfStake() == false)
+		{
 			++count;
-
+        }
 		pindex = pindex->pprev;
-		if(!pindex)
+		if (!pindex)
+		{
 			break;
-
-		if(pindex->nHeight < superBlock)
+        } 
+		if (pindex->nHeight < superBlock)
+		{
 			break;
+		}
 	}
+	
     return count;
 }
 
@@ -1006,11 +1024,11 @@ int GetPowHeight(const CBlockIndex* pindex)
 	int index = -1;
 	const CBlockIndex* pindex0 = pindex;
 
-	if(NUM_OF_POW_CHECKPOINT != 0)
+	if (NUM_OF_POW_CHECKPOINT != 0)
 	{
-		for(int i = 1; i <= NUM_OF_POW_CHECKPOINT; i++)
+		for (int i = 1; i <= NUM_OF_POW_CHECKPOINT; i++)
 		{
-			if(height > checkpointPoWHeight[NUM_OF_POW_CHECKPOINT - i][0])
+			if (height > checkpointPoWHeight[NUM_OF_POW_CHECKPOINT - i][0])
 			{
 				index = NUM_OF_POW_CHECKPOINT - i;
 				break;
@@ -1018,23 +1036,33 @@ int GetPowHeight(const CBlockIndex* pindex)
 		}
 	}
 
-	if(index != -1)
-		maxCheck = height - checkpointPoWHeight[index][0];
-
-    for(int j = 0; j < maxCheck; j++)
+	if (index != -1)
 	{
-		if(!pindex->IsProofOfStake())
+		maxCheck = height - checkpointPoWHeight[index][0];
+    }
+    
+    for (int j = 0; j < maxCheck; j++)
+	{
+		if (!pindex->IsProofOfStake())
 			++count;
 
         pindex = pindex->pprev;
 	}
 
-	if(index != -1)
+	if (index != -1)
+	{
 		count += checkpointPoWHeight[index][1];
+	}
 	else
+	{
 		++count;
+	}
 
-	// printf(">> Height = %d, Count = %d\n", height, count);
+	if (fPrintCheckPoint) 
+	{
+	   printf("PoW Checkpoint() :: nHeight = %d, PoW Count = %d\n", height, count);
+	}
+	
     return count;
 }
 
@@ -1075,10 +1103,10 @@ int64 GetProofOfWorkReward(int nHeight, int64 nFees, const CBlockIndex* pindex)
 int nJackpotValue = 0;
 
 // miner's coin base bonus block extra reward
-const int POW_BLOCKS_PER_DAY = 24 * 3600 / nWorkTargetSpacing;
-const double TARGET_AVERAGE_DAY		= 3.5;
-const double SUPER_BONUS_CAP_DAY	= 7.0;
-const double SUPER_BONUS_MAX_DAY	= 8.0;
+const int POW_BLOCKS_PER_DAY     = 24 * 3600 / nWorkTargetSpacing;
+const double TARGET_AVERAGE_DAY	 = 3.5;
+const double SUPER_BONUS_CAP_DAY = 7.0;
+const double SUPER_BONUS_MAX_DAY = 8.0;
 
 int64 GetProofOfWorkBlockBonusRewardFactor(CBlockIndex* pindex)
 {
@@ -1102,7 +1130,7 @@ int64 GetProofOfWorkBlockBonusRewardFactor(CBlockIndex* pindex)
 
 	double numofdays = (double)delta / (double)POW_BLOCKS_PER_DAY;
 
-    if(numofdays > SUPER_BONUS_MAX_DAY)
+    if (numofdays > SUPER_BONUS_MAX_DAY)
     {
         // increase the possibility
         int dd = 5 * (delta - SUPER_BONUS_MAX_DAY * POW_BLOCKS_PER_DAY);
@@ -1129,12 +1157,14 @@ int64 GetProofOfWorkBlockBonusRewardFactor(CBlockIndex* pindex)
     int64 reward = GetProofOfWorkReward(pindex->nHeight, 0, pindex->pprev);
     nJackpotValue = (int)(((double)reward * dfac) / COIN);
 
-    // printf(">> height = %d, random = %d, numberofday= %f, upper = %d, lower = %d\n", pindex->nHeight, random, numofdays,
-    //		upperLimit, lowerLimit);
-    // printf(">> cseed =%s\n", cseed);
+    if (fDebugHigh) 
+    {
+       printf("Jackpot Check : CSeed = %s  nHeight = %d, random = %d, numberofday= %f, upper = %d, lower = %d\n", 
+              cseed, pindex->nHeight, random, numofdays, upperLimit, lowerLimit);
+    }
 
     if (random > lowerLimit && random < upperLimit)	{ // 1 in 3.5 days on average
-       printf(">>> Found Jackpot!! height = %d, random = %d, numberofday= %f, upper = %d, lower = %d\n", pindex->nHeight, random, numofdays, upperLimit, lowerLimit);
+       printf("Found Jackpot!! height = %d, random = %d, numberofday= %f, upper = %d, lower = %d\n", pindex->nHeight, random, numofdays, upperLimit, lowerLimit);
        dfac = dfac * 100;
        return (int64)(dfac - 100);
     }
@@ -1154,7 +1184,7 @@ int64 GetCurrentJackpotSize(const CBlockIndex* pindex)
 	int lastSuperBlock = pindex->nSuperBlock;
 	int delta = CountPowDelta(pprev, lastSuperBlock);
 	double numofdays = (double)delta / (double)POW_BLOCKS_PER_DAY;
-	if(numofdays > SUPER_BONUS_CAP_DAY)
+	if (numofdays > SUPER_BONUS_CAP_DAY)
 		numofdays = SUPER_BONUS_CAP_DAY;
 
 	double dfac = pow(10.0, (numofdays/TARGET_AVERAGE_DAY + 1.0));
@@ -1330,7 +1360,7 @@ bool IsInitialBlockDownload()
         pindexLastBest = pindexBest;
         nLastUpdate = GetTime();
     }
-    return (((GetTime() - nLastUpdate) < 10) &&  pindexBest->GetBlockTime() < (GetTime() - 60 * 60));
+    return (((GetTime() - nLastUpdate) < 10) &&  pindexBest->GetBlockTime() < (GetTime() - 24 * 60 * 60));
 }
 
 void static InvalidChainFound(CBlockIndex* pindexNew)
@@ -2034,11 +2064,12 @@ bool CBlock::SetBestChain(CTxDB& txdb, CBlockIndex* pindexNew)
     nTimeBestReceived = GetTime();
     nTransactionsUpdated++;
     printf("SetBestChain: new best=%s  height=%d  trust=%s  date=%s\n",
-      hashBestChain.ToString().c_str(), nBestHeight, bnBestChainTrust.ToString().c_str(),
-      DateTimeStrFormat("%x %H:%M:%S", pindexBest->GetBlockTime()).c_str());
-
-	printf("Stake checkpoint: %x\n", pindexBest->nStakeModifierChecksum);
-
+        hashBestChain.ToString().c_str(), nBestHeight, bnBestChainTrust.ToString().c_str(),
+        DateTimeStrFormat("%x %H:%M:%S", pindexBest->GetBlockTime()).c_str());
+    if (fPrintCheckPoint) 
+    {
+        printf("PoS Checkpoint() :: nHeight = %d CheckSum = %x \n", pindexBest->nHeight, pindexBest->nStakeModifierChecksum);
+    }
     // Check the version of the last 100 blocks to see if we need to upgrade:
     if (!fIsInitialDownload)
     {
@@ -2114,7 +2145,7 @@ bool CTransaction::GetCoinAge(CTxDB& txdb, uint64& nCoinAge) const
     }
 
     CBigNum bnCoinDay = bnCentSecond * CENT / COIN / (24 * 60 * 60);
-    if (fDebug && GetBoolArg("-printcoinage"))
+    if (fDebugHigh)
         printf("coin age bnCoinDay=%s\n", bnCoinDay.ToString().c_str());
     nCoinAge = bnCoinDay.getuint64();
     return true;
@@ -2126,7 +2157,7 @@ bool CBlock::GetCoinAge(uint64& nCoinAge) const
     nCoinAge = 0;
 
     CTxDB txdb("r");
-    BOOST_FOREACH(const CTransaction& tx, vtx)
+    BOOST_FOREACH (const CTransaction& tx, vtx)
     {
         uint64 nTxCoinAge;
         if (tx.GetCoinAge(txdb, nTxCoinAge))
@@ -2137,7 +2168,7 @@ bool CBlock::GetCoinAge(uint64& nCoinAge) const
 
     if (nCoinAge == 0) // block coin age minimum 1 coin-day
         nCoinAge = 1;
-    if (fDebug && GetBoolArg("-printcoinage"))
+    if (fDebugHigh)
         printf("block coin age total nCoinDays=%"PRI64d"\n", nCoinAge);
     return true;
 }
@@ -2361,7 +2392,6 @@ bool CBlock::AcceptBlock()
 
 	    if (fDebug)
 		printf("AcceptBlock() : good bonus block reward tx %s\n", vtx[i].GetHash().ToString().c_str());
-
 	}
 
     if (nBonusReward > 0)
@@ -2765,18 +2795,17 @@ bool LoadBlockIndex(bool fAllowNew)
 {
     if (fTestNet)
     {
-        pchMessageStart[0] = 0xcd;
-        pchMessageStart[1] = 0xf2;
-        pchMessageStart[2] = 0xc0;
-        pchMessageStart[3] = 0xef;
-
+        pchMessageStart[0]  = 0xcd;
+        pchMessageStart[1]  = 0xf2;
+        pchMessageStart[2]  = 0xc0;
+        pchMessageStart[3]  = 0xef;
         bnProofOfStakeLimit = bnProofOfStakeLimitTestNet; // 0x00000fff PoS base target is fixed in testnet
-        bnProofOfWorkLimit = bnProofOfWorkLimitTestNet; // 0x0000ffff PoW base target is fixed in testnet
-        nStakeMinAge = 20 * 60; // test net min age is 20 min
-        nStakeMaxAge = 60 * 60; // test net min age is 60 min
-		nModifierInterval = 60; // test modifier interval is 2 minutes
-        nCoinbaseMaturity = 10; // test maturity is 10 blocks
-        nStakeTargetSpacing = 3 * 60; // test block spacing is 3 minutes
+        bnProofOfWorkLimit  = bnProofOfWorkLimitTestNet;  // 0x0000ffff PoW base target is fixed in testnet
+        nStakeMinAge        = 20 * 60;                    // test net min age is 20 min
+        nStakeMaxAge        = 60 * 60;                    // test net min age is 60 min
+		nModifierInterval   = 60;                         // test modifier interval is 2 minutes
+        nCoinbaseMaturity   = 10;                         // test maturity is 10 blocks
+        nStakeTargetSpacing = 3 * 60;                     // test block spacing is 3 minutes
     }
 
     //
@@ -4792,7 +4821,7 @@ void BitcoinMiner(CWallet *pwallet, bool fProofOfStake)
         {
             if (GetBoolArg("-nostake")) 
             {
-               MilliSleep(5000);
+               MilliSleep(9000);
             }
             else if (pblock->IsProofOfStake())
             {
@@ -4807,7 +4836,7 @@ void BitcoinMiner(CWallet *pwallet, bool fProofOfStake)
                 CheckWork(pblock.get(), *pwalletMain, reservekey);
                 SetThreadPriority(THREAD_PRIORITY_LOWEST);
             }
-            MilliSleep(500);
+            MilliSleep(1000);
             continue;
         }
 		 

@@ -479,7 +479,10 @@ void CoinControlDialog::updateLabels(WalletModel *model, QDialog* dialog)
                 nBytesInputs += 148;
             }
         }
-        else nBytesInputs += 148;
+        else
+        { 
+            nBytesInputs += 148;
+        }
     }
     
     // calculation

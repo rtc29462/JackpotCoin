@@ -26,6 +26,11 @@ static std::map<int, unsigned int> mapStakeModifierCheckpoints =
     (100001, 0x7a965716u )
     (150001, 0xf901006du )
     (184001, 0x86191c79u )
+    (200001, 0x8cbb46fcu )
+    (300001, 0x5d2caf58u )
+    (400001, 0xacd6bdfeu )
+    (500001, 0x656fb6e3u )
+    (580001, 0xfa111f8eu )
 	;
 
 // Get time weight
@@ -150,16 +155,18 @@ bool ComputeNextStakeModifier(const CBlockIndex* pindexPrev, uint64& nStakeModif
     // if it's not old enough, return the same stake modifier
     int64 nModifierTime = 0;
     if (!GetLastStakeModifier(pindexPrev, nStakeModifier, nModifierTime))
-        return error("ComputeNextStakeModifier: unable to get last modifier");
+    {
+        return error("ComputeNextStakeModifier() : unable to get last modifier");
+    }
     if (fDebug)
     {
-        printf("ComputeNextStakeModifier: prev modifier=0x%016"PRI64x" time=%s epoch=%u\n", nStakeModifier, DateTimeStrFormat(nModifierTime).c_str(), (unsigned int)nModifierTime);
+        printf("ComputeNextStakeModifier() : prev modifier=0x%016"PRI64x" time=%s epoch=%u\n", nStakeModifier, DateTimeStrFormat(nModifierTime).c_str(), (unsigned int)nModifierTime);
     }
     if (nModifierTime / nModifierInterval >= pindexPrev->GetBlockTime() / nModifierInterval)
     {
         if (fDebug)
         {
-            printf("ComputeNextStakeModifier: no new interval keep current modifier: pindexPrev nHeight=%d nTime=%u\n", pindexPrev->nHeight, (unsigned int)pindexPrev->GetBlockTime());
+            printf("ComputeNextStakeModifier() : no new interval keep current modifier: pindexPrev nHeight=%d nTime=%u\n", pindexPrev->nHeight, (unsigned int)pindexPrev->GetBlockTime());
         }
         return true;
     }
@@ -183,20 +190,22 @@ bool ComputeNextStakeModifier(const CBlockIndex* pindexPrev, uint64& nStakeModif
     uint64 nStakeModifierNew = 0;
     int64 nSelectionIntervalStop = nSelectionIntervalStart;
     map<uint256, const CBlockIndex*> mapSelectedBlocks;
-    for (int nRound=0; nRound<min(64, (int)vSortedByTimestamp.size()); nRound++)
+    for (int nRound = 0; nRound < min(64, (int)vSortedByTimestamp.size()); nRound++)
     {
         // add an interval section to the current selection round
         nSelectionIntervalStop += GetStakeModifierSelectionIntervalSection(nRound);
         // select a block from the candidates of current round
         if (!SelectBlockFromCandidates(vSortedByTimestamp, mapSelectedBlocks, nSelectionIntervalStop, nStakeModifier, &pindex))
+        {
             return error("ComputeNextStakeModifier: unable to select block at round %d", nRound);
+        }
         // write the entropy bit of the selected block
         nStakeModifierNew |= (((uint64)pindex->GetStakeEntropyBit()) << nRound);
         // add the selected block from candidates to selected list
         mapSelectedBlocks.insert(make_pair(pindex->GetBlockHash(), pindex));
         if (fDebugHigh)
         {
-            printf("ComputeNextStakeModifier: selected round %d stop=%s height=%d bit=%d\n",
+            printf("ComputeNextStakeModifier() : selected round %d stop=%s height=%d bit=%d\n",
                 nRound, DateTimeStrFormat(nSelectionIntervalStop).c_str(), pindex->nHeight, pindex->GetStakeEntropyBit());
         }
     }
@@ -212,20 +221,22 @@ bool ComputeNextStakeModifier(const CBlockIndex* pindexPrev, uint64& nStakeModif
         {
             // '=' indicates proof-of-stake blocks not selected
             if (pindex->IsProofOfStake())
+            {
                 strSelectionMap.replace(pindex->nHeight - nHeightFirstCandidate, 1, "=");
+            }
             pindex = pindex->pprev;
         }
-        BOOST_FOREACH(const PAIRTYPE(uint256, const CBlockIndex*)& item, mapSelectedBlocks)
+        BOOST_FOREACH (const PAIRTYPE(uint256, const CBlockIndex*)& item, mapSelectedBlocks)
         {
             // 'S' indicates selected proof-of-stake blocks
             // 'W' indicates selected proof-of-work blocks
             strSelectionMap.replace(item.second->nHeight - nHeightFirstCandidate, 1, item.second->IsProofOfStake()? "S" : "W");
         }
-        printf("ComputeNextStakeModifier: selection height [%d, %d] map %s\n", nHeightFirstCandidate, pindexPrev->nHeight, strSelectionMap.c_str());
+        printf("ComputeNextStakeModifier() : selection height [%d, %d] map %s\n", nHeightFirstCandidate, pindexPrev->nHeight, strSelectionMap.c_str());
     }
     if (fDebug)
     {
-        printf("ComputeNextStakeModifier: new modifier=0x%016"PRI64x" time=%s\n", nStakeModifierNew, DateTimeStrFormat(pindexPrev->GetBlockTime()).c_str());
+        printf("ComputeNextStakeModifier() : new modifier=0x%016"PRI64x" time=%s\n", nStakeModifierNew, DateTimeStrFormat(pindexPrev->GetBlockTime()).c_str());
     }
 
     nStakeModifier = nStakeModifierNew;
@@ -239,7 +250,9 @@ static bool GetKernelStakeModifier(uint256 hashBlockFrom, uint64& nStakeModifier
 {
     nStakeModifier = 0;
     if (!mapBlockIndex.count(hashBlockFrom))
+    {
         return error("GetKernelStakeModifier() : block not indexed");
+    } 
     const CBlockIndex* pindexFrom = mapBlockIndex[hashBlockFrom];
     nStakeModifierHeight = pindexFrom->nHeight;
     nStakeModifierTime = pindexFrom->GetBlockTime();
@@ -251,9 +264,11 @@ static bool GetKernelStakeModifier(uint256 hashBlockFrom, uint64& nStakeModifier
     {
         if (!pindex->pnext)
         {   // reached best block; may happen if node is behind on block chain
-            if (fPrintProofOfStake || (pindex->GetBlockTime() + nStakeMinAge - nStakeModifierSelectionInterval > GetAdjustedTime()))
+            if (fDebugHigh || ((pindex->GetBlockTime() + nStakeMinAge - nStakeModifierSelectionInterval) > GetAdjustedTime()))
+            {
                 return error("GetKernelStakeModifier() : reached best block %s at height %d from block %s",
                     pindex->GetBlockHash().ToString().c_str(), pindex->nHeight, hashBlockFrom.ToString().c_str());
+            }
             else
 			{
                 if (fDebugHigh) 
@@ -283,6 +298,7 @@ static bool GetKernelStakeModifier(uint256 hashBlockFrom, uint64& nStakeModifier
 // amount of coin age one owns.
 // The reason this hash is chosen is the following:
 //   nStakeModifier:
+//       (v0.4) limited fragments
 //       (v0.3) scrambles computation to make it very difficult to precompute
 //              future proof-of-stake at the time of the coin's confirmation
 //       (v0.2) nBits (deprecated): encodes all past block timestamps
@@ -300,12 +316,17 @@ static bool GetKernelStakeModifier(uint256 hashBlockFrom, uint64& nStakeModifier
 //
 bool CheckStakeKernelHash(unsigned int nBits, const CBlock& blockFrom, unsigned int nTxPrevOffset, const CTransaction& txPrev, const COutPoint& prevout, unsigned int nTimeTx, uint256& hashProofOfStake, bool fPrintProofOfStake)
 {
-    if (nTimeTx < txPrev.nTime)  // Transaction timestamp violation
+
+    if (nTimeTx < txPrev.nTime)
+    {
         return error("CheckStakeKernelHash() : nTime violation");
+    }
 
     unsigned int nTimeBlockFrom = blockFrom.GetBlockTime();
-    if (nTimeBlockFrom + nStakeMinAge > nTimeTx) // Min age requirement
+    if ((nTimeBlockFrom + nStakeMinAge) > nTimeTx) 
+    {
         return error("CheckStakeKernelHash() : min age violation");
+    }
 
     CBigNum bnTargetPerCoinDay;
     bnTargetPerCoinDay.SetCompact(nBits);
@@ -318,7 +339,7 @@ bool CheckStakeKernelHash(unsigned int nBits, const CBlock& blockFrom, unsigned 
 
     if (fDebugHigh)
     {
-	    printf(">>> CheckStakeKernelHash: nTimeWeight = %"PRI64d"\n", nTimeWeight);
+	    printf ("CheckStakeKernelHash() : nTimeWeight = %"PRI64d" bnCoinDayWeight = %"PRI64d"\n", nTimeWeight, bnCoinDayWeight.getuint64());
     }
 
     // Calculate hash
@@ -331,13 +352,13 @@ bool CheckStakeKernelHash(unsigned int nBits, const CBlock& blockFrom, unsigned 
 	{
 		if (fDebugHigh) 
         {
-           printf(">>> CheckStakeKernelHash: GetKernelStakeModifier return false\n");
+           printf("CheckStakeKernelHash() : GetKernelStakeModifier return false\n");
         }
         return false;
 	}
     if (fDebugHigh) 
     {
-	   printf(">>> CheckStakeKernelHash: passed GetKernelStakeModifier\n");
+	   printf("CheckStakeKernelHash() : passed GetKernelStakeModifier\n");
     }
     ss << nStakeModifier;
     ss << nTimeBlockFrom << nTxPrevOffset << txPrev.nTime << prevout.n << nTimeTx;
@@ -350,20 +371,19 @@ bool CheckStakeKernelHash(unsigned int nBits, const CBlock& blockFrom, unsigned 
             mapBlockIndex[hashBlockFrom]->nHeight,
             DateTimeStrFormat(blockFrom.GetBlockTime()).c_str());
         printf("CheckStakeKernelHash() : check protocol=%s modifier=0x%016"PRI64x" nTimeBlockFrom=%u nTxPrevOffset=%u nTimeTxPrev=%u nPrevout=%u nTimeTx=%u hashProof=%s\n",
-            "0.3",
+            "0.4",
             nStakeModifier,
             nTimeBlockFrom, nTxPrevOffset, txPrev.nTime, prevout.n, nTimeTx,
             hashProofOfStake.ToString().c_str());
     }
 
     // Now check if proof-of-stake hash meets target protocol
-    if (CBigNum(hashProofOfStake) > bnCoinDayWeight * bnTargetPerCoinDay)
+    if (CBigNum(hashProofOfStake) > (bnCoinDayWeight * bnTargetPerCoinDay))
 	{
         if (fDebugHigh)
         {
-		   printf(">>> bnCoinDayWeight = %s, bnTargetPerCoinDay=%s\n",
-		      bnCoinDayWeight.ToString().c_str(), bnTargetPerCoinDay.ToString().c_str());
-		   printf(">>> CheckStakeKernelHash - hashProofOfStake too much\n");
+		   printf("CheckStakeKernelHash() : bnCoinDayWeight = %s, bnTargetPerCoinDay=%s\n", bnCoinDayWeight.ToString().c_str(), bnTargetPerCoinDay.ToString().c_str());
+		   printf("CheckStakeKernelHash() : hashProofOfStake too much\n");
         }
         return false;
 	}
@@ -376,7 +396,7 @@ bool CheckStakeKernelHash(unsigned int nBits, const CBlock& blockFrom, unsigned 
             mapBlockIndex[hashBlockFrom]->nHeight,
             DateTimeStrFormat(blockFrom.GetBlockTime()).c_str());
         printf("CheckStakeKernelHash() : pass protocol=%s modifier=0x%016"PRI64x" nTimeBlockFrom=%u nTxPrevOffset=%u nTimeTxPrev=%u nPrevout=%u nTimeTx=%u hashProof=%s\n",
-            "0.3",
+            "0.4",
             nStakeModifier,
             nTimeBlockFrom, nTxPrevOffset, txPrev.nTime, prevout.n, nTimeTx,
             hashProofOfStake.ToString().c_str());
@@ -398,28 +418,34 @@ bool CheckProofOfStake(const CTransaction& tx, unsigned int nBits, uint256& hash
     CTransaction txPrev;
     CTxIndex txindex;
     if (!txPrev.ReadFromDisk(txdb, txin.prevout, txindex))
-        return tx.DoS(1, error("CheckProofOfStake() : INFO: read txPrev failed"));  // previous transaction not in main chain, may occur during initial download
+    {
+        // previous transaction not in main chain, may occur during initial download
+        return tx.DoS(1, error("CheckProofOfStake() : INFO: read txPrev failed"));  
+    }
     txdb.Close();
 
     // Verify signature
     if (!VerifySignature(txPrev, tx, 0, true, 0))
+    {
         return tx.DoS(100, error("CheckProofOfStake() : VerifySignature failed on coinstake %s", tx.GetHash().ToString().c_str()));
-
+    } 
     // Read block header
     CBlock block;
     if (!block.ReadFromDisk(txindex.pos.nFile, txindex.pos.nBlockPos, false))
-        return fDebug? error("CheckProofOfStake() : read block failed") : false; // unable to read block of previous transaction
-
+    {
+        // unable to read block of previous transaction
+        return fDebug? error("CheckProofOfStake() : read block failed") : false; 
+    }
     if (!CheckStakeKernelHash(nBits, block, txindex.pos.nTxPos - txindex.pos.nBlockPos, txPrev, txin.prevout, tx.nTime, hashProofOfStake, fDebug))
+    {
         return tx.DoS(1, error("CheckProofOfStake() : INFO: check kernel failed on coinstake %s, hashProof=%s", tx.GetHash().ToString().c_str(), hashProofOfStake.ToString().c_str())); // may occur during initial download or if behind on block chain sync
-
+    }  
     return true;
 }
 
 // Check whether the coinstake timestamp meets protocol
 bool CheckCoinStakeTimestamp(int64 nTimeBlock, int64 nTimeTx)
 {
-    // v0.3 protocol
     return (nTimeBlock == nTimeTx);
 }
 
@@ -449,9 +475,9 @@ bool CheckStakeModifierCheckpoints(int nHeight, unsigned int nStakeModifierCheck
     }
     if (mapStakeModifierCheckpoints.count(nHeight))
 	{
-        if (fDebug)
+        if (fPrintCheckPoint)
         {
-	       printf("> Stake checkpoint: %x\n", nStakeModifierChecksum);
+	       printf("CheckStakeModifierCheckpoints() : nHeight = %d  nStakeModifierChecksum = %x\n", nHeight, nStakeModifierChecksum);
         }
         return nStakeModifierChecksum == mapStakeModifierCheckpoints[nHeight];
 	}

@@ -409,7 +409,7 @@ bool GetMyExternalIP(CNetAddr& ipRet)
 void ThreadGetMyExternalIP(void* parg)
 {
     // Make this thread recognisable as the external IP detection thread
-    RenameThread("bitcoin-ext-ip");
+    RenameThread("jackpotcoin-ext-ip");
 
     CNetAddr addrLocalHost;
     if (GetMyExternalIP(addrLocalHost))
@@ -427,9 +427,6 @@ void AddressCurrentlyConnected(const CService& addr)
 {
     addrman.Connected(addr);
 }
-
-
-
 
 
 
@@ -476,9 +473,13 @@ CNode* ConnectNode(CAddress addrConnect, const char *pszDest, int64 nTimeout)
         if (pnode)
         {
             if (nTimeout != 0)
+            {
                 pnode->AddRef(nTimeout);
+            }
             else
+            {
                 pnode->AddRef();
+            }
             return pnode;
         }
     }
@@ -511,10 +512,13 @@ CNode* ConnectNode(CAddress addrConnect, const char *pszDest, int64 nTimeout)
         // Add node
         CNode* pnode = new CNode(hSocket, addrConnect, pszDest ? pszDest : "", false);
         if (nTimeout != 0)
+        {
             pnode->AddRef(nTimeout);
+        }
         else
+        {
             pnode->AddRef();
-
+        }
         {
             LOCK(cs_vNodes);
             vNodes.push_back(pnode);
@@ -560,8 +564,6 @@ void CNode::PushVersion()
 
 
 
-
-
 std::map<CNetAddr, int64> CNode::setBanned;
 CCriticalSection CNode::cs_setBanned;
 
@@ -580,7 +582,9 @@ bool CNode::IsBanned(CNetAddr ip)
         {
             int64 t = (*i).second;
             if (GetTime() < t)
+            {
                 fResult = true;
+            }
         }
     }
     return fResult;
@@ -631,17 +635,10 @@ void CNode::copyStats(CNodeStats &stats)
 
 
 
-
-
-
-
-
-
-
 void ThreadSocketHandler(void* parg)
 {
     // Make this thread recognisable as the networking thread
-    RenameThread("bitcoin-net");
+    RenameThread("jackpotcoin-net");
 
     try
     {
@@ -1000,7 +997,7 @@ void ThreadSocketHandler2(void* parg)
 void ThreadMapPort(void* parg)
 {
     // Make this thread recognisable as the UPnP thread
-    RenameThread("bitcoin-UPnP");
+    RenameThread("jackpotcoin-UPnP");
 
     try
     {
@@ -1157,7 +1154,7 @@ static const char *strDNSSeed[][2] = {
 void ThreadDNSAddressSeed(void* parg)
 {
     // Make this thread recognisable as the DNS seeding thread
-    RenameThread("bitcoin-dnsseed");
+    RenameThread("jackpotcoin-dnsseed");
 
     try
     {
@@ -1210,16 +1207,6 @@ void ThreadDNSAddressSeed2(void* parg)
 }
 
 
-
-
-
-
-
-
-
-
-
-
 unsigned int pnSeed[] =
 {
 };
@@ -1242,7 +1229,7 @@ void ThreadDumpAddress2(void* parg)
     {
         DumpAddresses();
         vnThreadsRunning[THREAD_DUMPADDRESS]--;
-        MilliSleep(100000);
+        MilliSleep(600000);
         vnThreadsRunning[THREAD_DUMPADDRESS]++;
     }
     vnThreadsRunning[THREAD_DUMPADDRESS]--;
@@ -1251,7 +1238,7 @@ void ThreadDumpAddress2(void* parg)
 void ThreadDumpAddress(void* parg)
 {
     // Make this thread recognisable as the address dumping thread
-    RenameThread("bitcoin-adrdump");
+    RenameThread("jackpotcoin-adrdump");
 
     try
     {
@@ -1266,7 +1253,7 @@ void ThreadDumpAddress(void* parg)
 void ThreadOpenConnections(void* parg)
 {
     // Make this thread recognisable as the connection opening thread
-    RenameThread("bitcoin-opencon");
+    RenameThread("jackpotcoin-opencon");
 
     try
     {
@@ -1448,7 +1435,7 @@ void ThreadOpenConnections2(void* parg)
 void ThreadOpenAddedConnections(void* parg)
 {
     // Make this thread recognisable as the connection opening thread
-    RenameThread("bitcoin-opencon");
+    RenameThread("jackpotcoin-opencon");
 
     try
     {
@@ -1579,7 +1566,7 @@ bool OpenNetworkConnection(const CAddress& addrConnect, CSemaphoreGrant *grantOu
 void ThreadMessageHandler(void* parg)
 {
     // Make this thread recognisable as the message handling thread
-    RenameThread("bitcoin-msghand");
+    RenameThread("jackpotcoin-msghand");
 
     try
     {
@@ -1830,7 +1817,7 @@ void static Discover()
 void StartNode(void* parg)
 {
     // Make this thread recognisable as the startup thread
-    RenameThread("bitcoin-start");
+    RenameThread("jackpotcoin-start");
 
     if (semOutbound == NULL) {
         // initialize semaphore

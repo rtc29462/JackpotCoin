@@ -84,31 +84,6 @@ Value gethashespersec(const Array& params, bool fHelp)
     return (boost::int64_t)dHashesPerSec;
 }
 
-
-Value getmininginfo(const Array& params, bool fHelp)
-{
-    if (fHelp || params.size() != 0)
-        throw runtime_error(
-            "getmininginfo\n"
-            "Returns an object containing mining-related information.");
-
-    Object obj;
-    obj.push_back(Pair("blocks",        (int)nBestHeight));
-    obj.push_back(Pair("currentblocksize",(uint64_t)nLastBlockSize));
-    obj.push_back(Pair("currentblocktx",(uint64_t)nLastBlockTx));
-    obj.push_back(Pair("difficulty",    (double)GetDifficulty()));
-    obj.push_back(Pair("errors",        GetWarnings("statusbar")));
-    obj.push_back(Pair("generate",      GetBoolArg("-gen")));
-    obj.push_back(Pair("nostake",       GetBoolArg("-nostake")));
-    obj.push_back(Pair("genproclimit",  (int)GetArg("-genproclimit", -1)));
-    obj.push_back(Pair("hashespersec",  gethashespersec(params, false)));
-	obj.push_back(Pair("networkhashps", getnetworkhashps(params, false)));
-    obj.push_back(Pair("pooledtx",      (uint64_t)mempool.size()));
-    obj.push_back(Pair("testnet",       fTestNet));
-    return obj;
-}
-
-
 Value getcurrentjackpot(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
@@ -188,6 +163,7 @@ Value GetNetworkHashPS(int lookup) {
     return (boost::int64_t)(((double)GetDifficulty() * pow(2.0, 32)) / timePerBlock);
 }
 
+
 Value getnetworkhashps(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() > 1)
@@ -197,6 +173,31 @@ Value getnetworkhashps(const Array& params, bool fHelp)
             "Pass in [blocks] to override # of blocks, -1 specifies since last difficulty change.");
 
     return GetNetworkHashPS(params.size() > 0 ? params[0].get_int() : 30);
+}
+
+
+
+Value getmininginfo(const Array& params, bool fHelp)
+{
+    if (fHelp || params.size() != 0)
+        throw runtime_error(
+            "getmininginfo\n"
+            "Returns an object containing mining-related information.");
+
+    Object obj;
+    obj.push_back(Pair("blocks",        (int)nBestHeight));
+    obj.push_back(Pair("currentblocksize",(uint64_t)nLastBlockSize));
+    obj.push_back(Pair("currentblocktx",(uint64_t)nLastBlockTx));
+    obj.push_back(Pair("difficulty",    (double)GetDifficulty()));
+    obj.push_back(Pair("errors",        GetWarnings("statusbar")));
+    obj.push_back(Pair("generate",      GetBoolArg("-gen")));
+    obj.push_back(Pair("nostake",       GetBoolArg("-nostake")));
+    obj.push_back(Pair("genproclimit",  (int)GetArg("-genproclimit", -1)));
+    obj.push_back(Pair("hashespersec",  gethashespersec(params, false)));
+	obj.push_back(Pair("networkhashps", getnetworkhashps(params, false)));
+    obj.push_back(Pair("pooledtx",      (uint64_t)mempool.size()));
+    obj.push_back(Pair("testnet",       fTestNet));
+    return obj;
 }
 
 
@@ -287,6 +288,7 @@ Value getworkex(const Array& params, bool fHelp)
         }
 
         result.push_back(Pair("merkle", merkle_arr));
+
 
         return result;
     }
@@ -476,16 +478,20 @@ Value getblocktemplate(const Array& params, bool fHelp)
             "See https://en.bitcoin.it/wiki/BIP_0022 for full specification.");
 
     std::string strMode = "template";
-    if (params.size() > 0) {
+    if (params.size() > 0) 
+    {
         const Object& oparam = params[0].get_obj();
         const Value& modeval = find_value(oparam, "mode");
-        if (modeval.type() == str_type) {
+        if (modeval.type() == str_type)
+        {
             strMode = modeval.get_str();
         }
-        else if (modeval.type() == null_type) {
+        else if (modeval.type() == null_type) 
+        {
             /* Do nothing */
         }
-        else {
+        else 
+        {
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid mode");
         }
     }
@@ -544,7 +550,7 @@ Value getblocktemplate(const Array& params, bool fHelp)
         uint256 txHash = tx.GetHash();
         setTxIndex[txHash] = i++;
 
-        if (tx.IsCoinBase() || tx.IsCoinStake())
+        if (i == 1 && (tx.IsCoinBase() || tx.IsCoinStake()))
         {
             continue;
         }
@@ -560,23 +566,26 @@ Value getblocktemplate(const Array& params, bool fHelp)
         MapPrevTx mapInputs;
         map<uint256, CTxIndex> mapUnused;
         bool fInvalid = false;
-        if (tx.FetchInputs(txdb, mapUnused, false, false, mapInputs, fInvalid))
+
+		if (!tx.IsCoinBase())
         {
-            entry.push_back(Pair("fee", (int64_t)(tx.GetValueIn(mapInputs) - tx.GetValueOut())));
-
-            Array deps;
-            BOOST_FOREACH (MapPrevTx::value_type& inp, mapInputs)
+            if (tx.FetchInputs(txdb, mapUnused, false, false, mapInputs, fInvalid))
             {
-                if (setTxIndex.count(inp.first))
-                    deps.push_back(setTxIndex[inp.first]);
+                entry.push_back(Pair("fee", (int64_t)(tx.GetValueIn(mapInputs) - tx.GetValueOut())));
+    
+                Array deps;
+                BOOST_FOREACH (MapPrevTx::value_type& inp, mapInputs)
+                {
+                    if (setTxIndex.count(inp.first))
+                        deps.push_back(setTxIndex[inp.first]);
+                }
+                entry.push_back(Pair("depends", deps));
+    
+                int64_t nSigOps = tx.GetLegacySigOpCount();
+                nSigOps += tx.GetP2SHSigOpCount(mapInputs);
+                entry.push_back(Pair("sigops", nSigOps));
             }
-            entry.push_back(Pair("depends", deps));
-
-            int64_t nSigOps = tx.GetLegacySigOpCount();
-            nSigOps += tx.GetP2SHSigOpCount(mapInputs);
-            entry.push_back(Pair("sigops", nSigOps));
         }
-
         transactions.push_back(entry);
     }
 
@@ -626,10 +635,12 @@ Value submitblock(const Array& params, bool fHelp)
     vector<unsigned char> blockData(ParseHex(params[0].get_str()));
     CDataStream ssBlock(blockData, SER_NETWORK, PROTOCOL_VERSION);
     CBlock block;
-    try {
+    try 
+    {
         ssBlock >> block;
     }
-    catch (std::exception &e) {
+    catch (std::exception &e) 
+    {
         throw JSONRPCError(RPC_DESERIALIZATION_ERROR, "Block decode failed");
     }
 
@@ -638,8 +649,9 @@ Value submitblock(const Array& params, bool fHelp)
 
     bool fAccepted = ProcessBlock(NULL, &block);
     if (!fAccepted)
+    {
         return "rejected";
-
+    } 
     return Value::null;
 }
 

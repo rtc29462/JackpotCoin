@@ -185,11 +185,14 @@ public:
             // simply re-use the cached status.
             if (rec->statusUpdateNeeded())
             {
-                LOCK(wallet->cs_wallet);
-                std::map<uint256, CWalletTx>::iterator mi = wallet->mapWallet.find(rec->hash);
-                if (mi != wallet->mapWallet.end())
                 {
-                    rec->updateStatus(mi->second);
+                    LOCK(wallet->cs_wallet);
+                    std::map<uint256, CWalletTx>::iterator mi = wallet->mapWallet.find(rec->hash);
+
+                    if(mi != wallet->mapWallet.end())
+                    {
+                        rec->updateStatus(mi->second);
+                    }
                 }
             }
             return rec;
@@ -361,7 +364,7 @@ QString TransactionTableModel::formatTxType(const TransactionRecord *wtx) const
       case TransactionRecord::SendToSelf:
            return tr("Payment to yourself");
       case TransactionRecord::StakeMint:
-           return tr("Stake Mined");
+           return tr("Staked");
       case TransactionRecord::Generated:
            return tr("Mined");
       default:
@@ -376,7 +379,18 @@ QVariant TransactionTableModel::txAddressDecoration(const TransactionRecord *wtx
     {
       case TransactionRecord::Generated:
       case TransactionRecord::StakeMint:
+      {
+			/*
+			QString str = BitcoinUnits::format(walletModel->getOptionsModel()->getDisplayUnit(), wtx->credit + wtx->debit);
+			float dd = str.toFloat();
+			if(dd > 1000000.0)
+				return QIcon(":/icons/tx_mined3");
+			else if(dd > 150000.0)
+				return QIcon(":/icons/tx_mined2");
+			else
+			*/
            return QIcon(":/icons/tx_mined");
+      }
       case TransactionRecord::RecvWithAddress:
       case TransactionRecord::RecvFromOther:
            return QIcon(":/icons/tx_input");

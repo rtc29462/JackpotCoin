@@ -48,9 +48,14 @@ Value importprivkey(const Array& params, bool fHelp)
     CBitcoinSecret vchSecret;
     bool fGood = vchSecret.SetString(strSecret);
 
-    if (!fGood) throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid private key");
-    if (fWalletUnlockMintOnly) // ppcoin: no importprivkey in mint-only mode
+    if (!fGood) 
+    { 
+       throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid private key");
+    }
+    if (fWalletUnlockMintOnly)
+    {
         throw JSONRPCError(RPC_WALLET_UNLOCK_NEEDED, "Wallet is unlocked for minting only.");
+    } 
 
     CKey key;
     bool fCompressed;
@@ -81,11 +86,13 @@ Value dumpprivkey(const Array& params, bool fHelp)
             "dumpprivkey <JackpotCoinAddress>\n"
             "Reveals the private key corresponding to <JackpotCoinaddress>.");
 
+    EnsureWalletIsUnlocked();
+
     string strAddress = params[0].get_str();
     CBitcoinAddress address;
     if (!address.SetString(strAddress))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid JackpotCoin address");
-    if (fWalletUnlockMintOnly) // ppcoin: no dumpprivkey in mint-only mode
+    if (fWalletUnlockMintOnly)
         throw JSONRPCError(RPC_WALLET_UNLOCK_NEEDED, "Wallet is unlocked for minting only.");
     CKeyID keyID;
     if (!address.GetKeyID(keyID))

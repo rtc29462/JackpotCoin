@@ -18,7 +18,6 @@
 typedef long long  int64;
 typedef unsigned long long  uint64;
 
-
 inline int Testuint256AdHoc(std::vector<std::string> vArg);
 
 
@@ -31,7 +30,7 @@ class base_uint
 {
 protected:
     enum { WIDTH=BITS/32 };
-    uint32_t pn[WIDTH];
+    unsigned int pn[WIDTH];
 
 public:
 
@@ -374,7 +373,7 @@ public:
         return (unsigned char*)&pn[WIDTH];
     }
 
-    unsigned int size() const
+    unsigned int size()
     {
         return sizeof(pn);
     }

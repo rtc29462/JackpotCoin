@@ -8,8 +8,6 @@
 
 #include "uint256.h"
 
-#include <stdarg.h>
-
 #ifndef WIN32
 #include <sys/types.h>
 #include <sys/time.h>
@@ -22,7 +20,6 @@ typedef int pid_t; /* define for Windows compatibility */
 #include <vector>
 #include <string>
 
-#include <boost/version.hpp>
 #include <boost/thread.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/path.hpp>
@@ -34,8 +31,9 @@ typedef int pid_t; /* define for Windows compatibility */
 
 #include "netbase.h" // for AddTimeData
 
-typedef long long           int64;
-typedef unsigned long long  uint64;
+
+#include <stdint.h>
+#include <inttypes.h>
 
 static const int64 COIN = 1000000;
 static const int64 CENT = 10000;
@@ -46,10 +44,10 @@ static const int64 CENT = 10000;
 #define UEND(a)             ((unsigned char*)&((&(a))[1]))
 #define ARRAYLEN(array)     (sizeof(array)/sizeof((array)[0]))
 
-#define UVOIDBEGIN(a)        ((void*)&(a))
-#define CVOIDBEGIN(a)        ((const void*)&(a))
+#define UVOIDBEGIN(a)       ((void*)&(a))
+#define CVOIDBEGIN(a)       ((const void*)&(a))
 #define UINTBEGIN(a)        ((uint32_t*)&(a))
-#define CUINTBEGIN(a)        ((const uint32_t*)&(a))
+#define CUINTBEGIN(a)       ((const uint32_t*)&(a))
 
 #ifndef PRI64d
 #if defined(_MSC_VER) || defined(__MSVCRT__)
@@ -124,15 +122,21 @@ T* alignup(T* p)
 
 inline void MilliSleep(int64 n)
 {
+    /*Boost has a year 2038 problem— if the request sleep time is past epoch+2^31 seconds the sleep returns instantly.
+      So we clamp our sleeps here to 10 years and hope that boost is fixed by 2028. */
+    boost::thread::sleep(boost::get_system_time() + boost::posix_time::milliseconds(n>315576000000LL?315576000000LL:n));
+
 // Boost's sleep_for was uninterruptable when backed by nanosleep from 1.50
 // until fixed in 1.52. Use the deprecated sleep method for the broken case.
 // See: https://svn.boost.org/trac/boost/ticket/7238
-
+/*
 #if BOOST_VERSION >= 105000 && (!defined(BOOST_HAS_NANOSLEEP) || BOOST_VERSION >= 105200)
     boost::this_thread::sleep_for(boost::chrono::milliseconds(n));
 #else
     boost::this_thread::sleep(boost::posix_time::milliseconds(n));
 #endif
+*/
+
 }
 
 /* This GNU C extension enables the compiler to check the format string against the parameters provided.
@@ -145,12 +149,14 @@ inline void MilliSleep(int64 n)
 #define ATTR_WARN_PRINTF(X,Y)
 #endif
 
+
 extern std::map<std::string, std::string> mapArgs;
 extern std::map<std::string, std::vector<std::string> > mapMultiArgs;
 extern bool fDebug;
 extern bool fDebugNet;
 extern bool fDebugHigh;
 extern bool fDebugHash;
+extern bool fPrintCheckPoint;
 extern bool fPrintToConsole;
 extern bool fPrintToDebugger;
 extern bool fRequestShutdown;
@@ -158,11 +164,11 @@ extern bool fShutdown;
 extern bool fDaemon;
 extern bool fServer;
 extern bool fCommandLine;
+extern std::string strMiscWarning;
 extern bool fTestNet;
 extern bool fNoListen;
 extern bool fLogTimestamps;
 extern bool fReopenDebugLog;
-extern std::string strMiscWarning;
 
 void RandAddSeed();
 void RandAddSeedPerfmon();
@@ -201,7 +207,6 @@ void ParseString(const std::string& str, char c, std::vector<std::string>& v);
 std::string FormatMoney(int64 n, bool fPlus=false);
 bool ParseMoney(const std::string& str, int64& nRet);
 bool ParseMoney(const char* pszIn, int64& nRet);
-std::string SanitizeString(const std::string& str);
 std::vector<unsigned char> ParseHex(const char* psz);
 std::vector<unsigned char> ParseHex(const std::string& str);
 bool IsHex(const std::string& str);
@@ -213,18 +218,11 @@ std::vector<unsigned char> DecodeBase32(const char* p, bool* pfInvalid = NULL);
 std::string DecodeBase32(const std::string& str);
 std::string EncodeBase32(const unsigned char* pch, size_t len);
 std::string EncodeBase32(const std::string& str);
-std::string EncodeDumpTime(int64 nTime);
-int64 DecodeDumpTime(const std::string& s);
-std::string EncodeDumpString(const std::string &str);
-std::string DecodeDumpString(const std::string &str);
 void ParseParameters(int argc, const char*const argv[]);
 bool WildcardMatch(const char* psz, const char* mask);
 bool WildcardMatch(const std::string& str, const std::string& mask);
 void FileCommit(FILE *fileout);
 int GetFilesize(FILE* file);
-bool TruncateFile(FILE *file, unsigned int length);
-int RaiseFileDescriptorLimit(int nMinFD);
-void AllocateFileRange(FILE *file, unsigned int offset, unsigned int length);
 bool RenameOver(boost::filesystem::path src, boost::filesystem::path dest);
 boost::filesystem::path GetDefaultDataDir();
 const boost::filesystem::path &GetDataDir(bool fNetSpecific = true);
@@ -237,7 +235,6 @@ void ReadConfigFile(std::map<std::string, std::string>& mapSettingsRet, std::map
 #ifdef WIN32
 boost::filesystem::path GetSpecialFolderPath(int nFolder, bool fCreate = true);
 #endif
-boost::filesystem::path GetTempPath();
 void ShrinkDebugFile();
 int GetRandInt(int nMax);
 uint64 GetRand(uint64 nMax);
@@ -245,12 +242,18 @@ uint256 GetRandHash();
 int64 GetTime();
 void SetMockTime(int64 nMockTimeIn);
 int64 GetAdjustedTime();
-int64 GetTimeOffset();
 long hex2long(const char* hexString);
 std::string FormatFullVersion();
 std::string FormatSubVersion(const std::string& name, int nClientVersion, const std::vector<std::string>& comments);
 void AddTimeData(const CNetAddr& ip, int64 nTime);
 void runCommand(std::string strCommand);
+
+
+
+
+
+
+
 
 
 inline std::string i64tostr(int64 n)
@@ -363,12 +366,6 @@ inline int64 GetTimeMillis()
 {
     return (boost::posix_time::ptime(boost::posix_time::microsec_clock::universal_time()) -
             boost::posix_time::ptime(boost::gregorian::date(1970,1,1))).total_milliseconds();
-}
-
-inline int64 GetTimeMicros()
-{
-    return (boost::posix_time::ptime(boost::posix_time::microsec_clock::universal_time()) -
-            boost::posix_time::ptime(boost::gregorian::date(1970,1,1))).total_microseconds();
 }
 
 inline std::string DateTimeStrFormat(const char* pszFormat, int64 nTime)
@@ -559,43 +556,6 @@ inline uint160 Hash160(const std::vector<unsigned char>& vch)
 }
 
 
-/**
- * MWC RNG of George Marsaglia
- * This is intended to be fast. It has a period of 2^59.3, though the
- * least significant 16 bits only have a period of about 2^30.1.
- *
- * @return random value
- */
-extern uint32_t insecure_rand_Rz;
-extern uint32_t insecure_rand_Rw;
-static inline uint32_t insecure_rand(void)
-{
-    insecure_rand_Rz = 36969 * (insecure_rand_Rz & 65535) + (insecure_rand_Rz >> 16);
-    insecure_rand_Rw = 18000 * (insecure_rand_Rw & 65535) + (insecure_rand_Rw >> 16);
-    return (insecure_rand_Rw << 16) + insecure_rand_Rz;
-}
-
-/**
- * Seed insecure_rand using the random pool.
- * @param Deterministic Use a determinstic seed
- */
-void seed_insecure_rand(bool fDeterministic=false);
-
-/**
- * Timing-attack-resistant comparison.
- * Takes time proportional to length
- * of first argument.
- */
-template <typename T>
-bool TimingResistantEqual(const T& a, const T& b)
-{
-    if (b.size() == 0) return a.size() == 0;
-    size_t accumulator = a.size() ^ b.size();
-    for (size_t i = 0; i < a.size(); i++)
-        accumulator |= a[i] ^ b[i%b.size()];
-    return accumulator == 0;
-}
-
 /** Median filter over a stream of values.
  * Returns the median of the last N numbers
  */
@@ -691,65 +651,5 @@ inline uint32_t ByteReverse(uint32_t value)
     return (value<<16) | (value>>16);
 }
 
-
-// Standard wrapper for do-something-forever thread functions.
-// "Forever" really means until the thread is interrupted.
-// Use it like:
-//   new boost::thread(boost::bind(&LoopForever<void (*)()>, "dumpaddr", &DumpAddresses, 900000));
-// or maybe:
-//    boost::function<void()> f = boost::bind(&FunctionWithArg, argument);
-//    threadGroup.create_thread(boost::bind(&LoopForever<boost::function<void()> >, "nothing", f, milliseconds));
-template <typename Callable> void LoopForever(const char* name,  Callable func, int64 msecs)
-{
-    std::string s = strprintf("bitcoin-%s", name);
-    RenameThread(s.c_str());
-    printf("%s thread start\n", name);
-    try
-    {
-        while (true)
-        {
-            MilliSleep(msecs);
-            func();
-        }
-    }
-    catch (boost::thread_interrupted)
-    {
-        printf("%s thread stop\n", name);
-        throw;
-    }
-    catch (std::exception& e) 
-    {
-        PrintException(&e, name);
-    }
-    catch (...) 
-    {
-        PrintException(NULL, name);
-    }
-}
-// .. and a wrapper that just calls func once
-template <typename Callable> void TraceThread(const char* name,  Callable func)
-{
-    std::string s = strprintf("bitcoin-%s", name);
-    RenameThread(s.c_str());
-    try
-    {
-        printf("%s thread start\n", name);
-        func();
-        printf("%s thread exit\n", name);
-    }
-    catch (boost::thread_interrupted)
-    {
-        printf("%s thread interrupt\n", name);
-        throw;
-    }
-    catch (std::exception& e) 
-    {
-        PrintException(&e, name);
-    }
-    catch (...) 
-    {
-        PrintException(NULL, name);
-    }
-}
-
 #endif
+

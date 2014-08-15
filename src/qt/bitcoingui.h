@@ -120,7 +120,7 @@ public slots:
     void setNumBlocks(int count, int nTotalBlocks);
     // Set the encryption status as shown in the UI.
     // status  current encryption status
-    // WalletModel::EncryptionStatus   
+    // WalletModel::EncryptionStatus
     void setEncryptionStatus(int status);
     // Notify the user of an error in the network or transaction handling code.
     void error(const QString &title, const QString &message, bool modal);
@@ -157,7 +157,7 @@ private slots:
     void trayIconActivated(QSystemTrayIcon::ActivationReason reason);
 #endif
     // Show incoming transaction notification for new transactions.
-    // The new items are those between start and end inclusive, under the given parent item.  
+    // The new items are those between start and end inclusive, under the given parent item.
     void incomingTransaction(const QModelIndex & parent, int start, int end);
     // Encrypt the wallet
     void encryptWallet(bool status);

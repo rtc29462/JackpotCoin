@@ -63,7 +63,7 @@ void Shutdown(void* parg)
     static bool fTaken;
 
     // Make this thread recognisable as the shutdown thread
-    RenameThread("bitcoin-shutoff");
+    RenameThread("jackpotcoin-shutoff");
 
     bool fFirstThread = false;
     {
@@ -450,6 +450,7 @@ bool AppInit2()
     fServer = true;
 #endif
 
+    fPrintCheckPoint = GetBoolArg("-printcheckpoint");
     fPrintToConsole = GetBoolArg("-printtoconsole");
     fPrintToDebugger = GetBoolArg("-printtodebugger");
     fLogTimestamps = GetBoolArg("-logtimestamps");
@@ -721,7 +722,7 @@ bool AppInit2()
         printf("Shutdown requested. Exiting.\n");
         return false;
     }
-    printf(" block index %15"PRI64d"ms\n", GetTimeMillis() - nStart);
+    printf("block index loading time : %15"PRI64d"ms\n", GetTimeMillis() - nStart);
 
     if (GetBoolArg("-printblockindex") || GetBoolArg("-printblocktree"))
     {
@@ -827,8 +828,8 @@ bool AppInit2()
         }
     }
 
-    printf("%s", strErrors.str().c_str());
-    printf(" wallet      %15"PRI64d"ms\n", GetTimeMillis() - nStart);
+    printf("error while loading wallet : (%s)\n", strErrors.str().c_str());
+    printf("wallet loading time : %15"PRI64d"ms\n", GetTimeMillis() - nStart);
 
     RegisterWallet(pwalletMain);
 

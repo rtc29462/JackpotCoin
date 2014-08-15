@@ -8,6 +8,7 @@
 
 // MODIFIER_INTERVAL: time to elapse before new modifier is computed
 static const unsigned int MODIFIER_INTERVAL = 10 * 60;
+
 extern unsigned int nModifierInterval;
 
 // MODIFIER_INTERVAL_RATIO:

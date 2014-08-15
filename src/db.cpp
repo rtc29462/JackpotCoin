@@ -86,9 +86,8 @@ bool CDBEnv::Open(boost::filesystem::path pathEnv_)
     dbenv.set_lg_bsize(1048576);
     dbenv.set_lg_max(10485760);
 
-    // Bugfix: Bump lk_max_locks default to 537000, to safely handle reorgs with up to 5 blocks reversed
-    // dbenv.set_lk_max_locks(10000);
-    dbenv.set_lk_max_locks(537000);
+    // Bugfix: Bump lk_max_locks default to 1024*1024, to safely handle reorgs with up to 8 blocks reversed
+    dbenv.set_lk_max_locks(1024*1024);
 
     dbenv.set_lk_max_objects(10000);
     dbenv.set_errfile(fopen(pathErrorFile.string().c_str(), "a")); /// debug
@@ -207,7 +206,7 @@ bool CDBEnv::Salvage(std::string strFile, bool fAggressive,
     int result = db.verify(strFile.c_str(), NULL, &strDump, flags);
     if (result != 0)
     {
-        printf("ERROR: db salvage failed\n");
+        printf("ERROR: db salvage failed: %d\n",result);
         return false;
     }
 

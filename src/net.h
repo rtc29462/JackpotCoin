@@ -179,6 +179,7 @@ public:
     bool fSuccessfullyConnected;
     bool fDisconnect;
     CSemaphoreGrant grantOutbound;
+
 protected:
     int nRefCount;
 
@@ -242,7 +243,7 @@ public:
         setInventoryKnown.max_size(SendBufferSize() / 1000);
 
         // Be shy and don't send version until we hear
-        if (hSocket != INVALID_SOCKET && !fInbound)
+        if ((hSocket != INVALID_SOCKET) && !fInbound)
             PushVersion();
     }
 
@@ -641,14 +642,6 @@ public:
     bool Misbehaving(int howmuch); // 1 == a little, 100 == a lot
     void copyStats(CNodeStats &stats);
 };
-
-
-
-
-
-
-
-
 
 
 inline void RelayInventory(const CInv& inv)

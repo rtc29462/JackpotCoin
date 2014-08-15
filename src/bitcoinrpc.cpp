@@ -178,6 +178,7 @@ Value help(const Array& params, bool fHelp)
 
 Value stop(const Array& params, bool fHelp)
 {
+    // Accept the deprecated and ignored 'detach' boolean argument
     if (fHelp || params.size() > 1)
         throw runtime_error(
             "stop <detach>\n"
@@ -537,12 +538,14 @@ bool ClientAllowed(const boost::asio::ip::address& address)
     const vector<string>& vAllow = mapMultiArgs["-rpcallowip"];
 
     //
-    // minimumn 8 characters for IP address, so, * or *.*.*.* will be ignored
+    // minimumn 2 characters for IP address, so, * will be ignored
     // need to set more detail IP address with wile card
     //
     BOOST_FOREACH(string strAllow, vAllow) {
-        if (strAllow.length() > 7) {
-            if (WildcardMatch(strAddress, strAllow)) {
+        if (strAllow.length() > 1)
+        {
+            if (WildcardMatch(strAddress, strAllow)) 
+            {
                 return true;
             }
         }
@@ -653,7 +656,7 @@ private:
 void ThreadRPCServer(void* parg)
 {
     // Make this thread recognisable as the RPC listener
-    RenameThread("bitcoin-rpclist");
+    RenameThread("jackpotcoin-rpclist");
 
     try
     {
@@ -764,7 +767,7 @@ void ThreadRPCServer2(void* parg)
         uiInterface.ThreadSafeMessageBox(strprintf(
             _("%s, you must set a rpcpassword in the configuration file:\n %s\n"
               "It is recommended you use the following random password:\n"
-              "rpcuser=bitcoinrpc\n"
+              "rpcuser=jackpotcoinrpc\n"
               "rpcpassword=%s\n"
               "(you do not need to remember this password)\n"
               "If the file does not exist, create it with owner-readable-only file permissions.\n"),
@@ -953,7 +956,7 @@ static CCriticalSection cs_THREAD_RPCHANDLER;
 void ThreadRPCServer3(void* parg)
 {
     // Make this thread recognisable as the RPC handler
-    RenameThread("bitcoin-rpchand");
+    RenameThread("jackpotcoin-rpchand");
 
     {
         LOCK(cs_THREAD_RPCHANDLER);
@@ -1260,6 +1263,10 @@ int CommandLineRPC(int argc, char *argv[])
                 strPrint = write_string(result, true);
         }
     }
+    catch (boost::thread_interrupted)
+    {
+        throw;
+    }
     catch (std::exception& e)
     {
         strPrint = string("error: ") + e.what();
@@ -1303,6 +1310,10 @@ int main(int argc, char *argv[])
         {
             return CommandLineRPC(argc, argv);
         }
+    }
+    catch (boost::thread_interrupted) 
+    {
+        throw;
     }
     catch (std::exception& e) {
         PrintException(&e, "main()");
