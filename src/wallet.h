@@ -286,11 +286,13 @@ public:
 
     void Inventory(const uint256 &hash)
     {
-        LOCK(cs_wallet);
-        std::map<uint256, int>::iterator mi = mapRequestCount.find(hash);
-        if (mi != mapRequestCount.end())
         {
-            (*mi).second++;
+            LOCK(cs_wallet);
+            std::map<uint256, int>::iterator mi = mapRequestCount.find(hash);
+            if (mi != mapRequestCount.end())
+            {
+                (*mi).second++;
+            }
         }
     }
 
@@ -495,7 +497,7 @@ public:
             pthis->strFromAccount = pthis->mapValue["fromaccount"];
             if (mapValue.count("spent"))
             {
-                BOOST_FOREACH(char c, pthis->mapValue["spent"])
+                BOOST_FOREACH (char c, pthis->mapValue["spent"])
                 {
                     pthis->vfSpent.push_back(c != '0');
                 }

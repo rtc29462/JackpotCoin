@@ -123,7 +123,7 @@ static bool SelectBlockFromCandidates(
     }
     if (fDebugHigh) 
     {
-        printf("SelectBlockFromCandidates: selection hash=%s\n", hashBest.ToString().c_str());
+        printf("SelectBlockFromCandidates() : selection hash=%s\n", hashBest.ToString().c_str());
     }
     return fSelected;
 }
@@ -158,13 +158,13 @@ bool ComputeNextStakeModifier(const CBlockIndex* pindexPrev, uint64& nStakeModif
     {
         return error("ComputeNextStakeModifier() : unable to get last modifier");
     }
-    if (fDebug)
+    if (fDebugHigh)
     {
         printf("ComputeNextStakeModifier() : prev modifier=0x%016"PRI64x" time=%s epoch=%u\n", nStakeModifier, DateTimeStrFormat(nModifierTime).c_str(), (unsigned int)nModifierTime);
     }
     if (nModifierTime / nModifierInterval >= pindexPrev->GetBlockTime() / nModifierInterval)
     {
-        if (fDebug)
+        if (fDebugHigh)
         {
             printf("ComputeNextStakeModifier() : no new interval keep current modifier: pindexPrev nHeight=%d nTime=%u\n", pindexPrev->nHeight, (unsigned int)pindexPrev->GetBlockTime());
         }
@@ -273,7 +273,7 @@ static bool GetKernelStakeModifier(uint256 hashBlockFrom, uint64& nStakeModifier
 			{
                 if (fDebugHigh) 
                 { 
-				    printf(">> nStakeModifierTime = %"PRI64d", pindexFrom->GetBlockTime() = %"PRI64d", nStakeModifierSelectionInterval = %"PRI64d"\n",
+				    printf("GetKernelStakeModifier() : nStakeModifierTime = %"PRI64d", pindexFrom->GetBlockTime() = %"PRI64d", nStakeModifierSelectionInterval = %"PRI64d"\n",
 				         nStakeModifierTime, pindexFrom->GetBlockTime(), nStakeModifierSelectionInterval);
                 }
                 return false;
@@ -298,7 +298,7 @@ static bool GetKernelStakeModifier(uint256 hashBlockFrom, uint64& nStakeModifier
 // amount of coin age one owns.
 // The reason this hash is chosen is the following:
 //   nStakeModifier:
-//       (v0.4) limited fragments
+//       (v0.4) listed block split
 //       (v0.3) scrambles computation to make it very difficult to precompute
 //              future proof-of-stake at the time of the coin's confirmation
 //       (v0.2) nBits (deprecated): encodes all past block timestamps
@@ -388,7 +388,7 @@ bool CheckStakeKernelHash(unsigned int nBits, const CBlock& blockFrom, unsigned 
         return false;
 	}
 
-    if (fDebug)
+    if (fDebugHigh)
     {
         printf("CheckStakeKernelHash() : using modifier 0x%016"PRI64x" at height=%d timestamp=%s for block from height=%d timestamp=%s\n",
             nStakeModifier, nStakeModifierHeight,

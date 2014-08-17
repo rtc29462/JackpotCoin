@@ -18,6 +18,10 @@
 #define GLOBAL extern
 #endif
 
+
+
+
+
 inline uint256 HashSHA3V2(char * input, unsigned int round_mask) {
 
     sph_blake512_context     ctx_blake;
@@ -126,9 +130,10 @@ inline uint256 HashSHA3(const T1 pbegin, const T1 pend) {
 
     char * ptr = (char*)(&pbegin[0]);
 
-    if (fDebugHash) {
+    if (fDebugHash) 
+    {
        printf("Hash Input \n");
-       for (unsigned int i = 0; i < 88; i++) {
+       for (unsigned int i = 0; i < 128; i++) {
            printf ("%.2x", (unsigned char)ptr[i]);
        }
        printf("\n");

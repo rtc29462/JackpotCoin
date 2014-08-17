@@ -326,7 +326,6 @@ bool CTransaction::IsStandard() const
     if (nVersion > CTransaction::CURRENT_VERSION)
         return false;
 
-    unsigned int nDataOut = 0;
     txnouttype whichType;
     BOOST_FOREACH (const CTxIn& txin, vin)
     {
@@ -1360,7 +1359,7 @@ bool IsInitialBlockDownload()
         pindexLastBest = pindexBest;
         nLastUpdate = GetTime();
     }
-    return (((GetTime() - nLastUpdate) < 10) &&  pindexBest->GetBlockTime() < (GetTime() - 24 * 60 * 60));
+    return (((GetTime() - nLastUpdate) < 10) && (pindexBest->GetBlockTime() < (GetTime() - 24 * 60 * 60)));
 }
 
 void static InvalidChainFound(CBlockIndex* pindexNew)
@@ -3092,7 +3091,7 @@ string GetWarnings(string strFor)
                 strStatusBar = alert.strStatusBar;
                 if (nPriority > 1000)
                 {
-                    // ppcoin: safe mode for high alert
+                    // Safe mode for high alert
                     strRPC = strStatusBar; 
                 }
             }
@@ -3216,7 +3215,7 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
             return true;
         }
 
-        // ppcoin: record my external IP reported by peer
+        // Record my external IP reported by peer
         if (addrFrom.IsRoutable() && addrMe.IsRoutable())
         {
             addrSeenByPeer = addrMe;
@@ -3228,6 +3227,7 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
             pfrom->PushVersion();
         }
         pfrom->fClient = !(pfrom->nServices & NODE_NETWORK);
+
         AddTimeData(pfrom->addr, nTime);
 
         // Change version
@@ -3280,7 +3280,7 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
                 item.second.RelayTo(pfrom);
         }
 
-        // ppcoin: relay sync-checkpoint
+        // Relay sync-checkpoint
         {
             LOCK(Checkpoints::cs_hashSyncCheckpoint);
             if (!Checkpoints::checkpointMessage.IsNull())
@@ -3291,10 +3291,12 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
 
         pfrom->fSuccessfullyConnected = true;
 
-        printf("receive version message: version %d, blocks=%d, us=%s, them=%s, peer=%s\n", pfrom->nVersion, pfrom->nStartingHeight, addrMe.ToString().c_str(), addrFrom.ToString().c_str(), pfrom->addr.ToString().c_str());
-
+        if (fDebug) 
+        {
+            printf("receive version message: version %d, blocks=%d, us=%s, them=%s, peer=%s\n", pfrom->nVersion, pfrom->nStartingHeight, addrMe.ToString().c_str(), addrFrom.ToString().c_str(), pfrom->addr.ToString().c_str());
+        }
         cPeerBlockCounts.input(pfrom->nStartingHeight);
-        // ppcoin: ask for pending sync-checkpoint if any
+        // Ask for pending sync-checkpoint if any
 		if (!IsInitialBlockDownload())
 		{
             Checkpoints::AskForPendingSyncCheckpoint(pfrom);
@@ -4054,11 +4056,11 @@ bool SendMessages(CNode* pto, bool fSendTrickle)
 
         // Address refresh broadcast
         static int64 nLastRebroadcast;
-        if (!IsInitialBlockDownload() && (GetTime() - nLastRebroadcast > 24 * 60 * 60))
+        if (!IsInitialBlockDownload() && ((GetTime() - nLastRebroadcast) > (24 * 60 * 60)))
         {
             {
                 LOCK(cs_vNodes);
-                BOOST_FOREACH(CNode* pnode, vNodes)
+                BOOST_FOREACH (CNode* pnode, vNodes)
                 {
                     // Periodically clear setAddrKnown to allow refresh broadcasts
                     if (nLastRebroadcast)
@@ -4433,7 +4435,10 @@ CBlock* CreateNewBlock(CWallet* pwallet, bool fProofOfStake)
                     if (!mempool.mapTx.count(txin.prevout.hash))
                     {
                         printf("ERROR: mempool transaction missing input\n");
-                        if (fDebug) assert("mempool transaction missing input" == 0);
+                        if (fDebug)
+                        { 
+                            assert("mempool transaction missing input" == 0);
+                        }
                         fMissingInputs = true;
                         if (porphan)
                         {

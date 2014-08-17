@@ -10,10 +10,9 @@
 #include "uint256.h"
 #include "version.h"
 
-#include <openssl/bn.h>
-
 #include <stdexcept>
 #include <vector>
+#include <openssl/bn.h>
 
 #include <stdint.h>
 

@@ -86,7 +86,7 @@ bool CDBEnv::Open(boost::filesystem::path pathEnv_)
     dbenv.set_lg_bsize(1048576);
     dbenv.set_lg_max(10485760);
 
-    // Bugfix: Bump lk_max_locks default to 1024*1024, to safely handle reorgs with up to 8 blocks reversed
+    // Bugfix: Bump lk_max_locks default to 1024*1024, to safely handle reorgs with up to 10 blocks reversed
     dbenv.set_lk_max_locks(1024*1024);
 
     dbenv.set_lk_max_objects(10000);
@@ -968,8 +968,6 @@ bool CAddrDB::Read(CAddrMan& addr)
     // use file size to size memory buffer
     int fileSize = GetFilesize(filein);
     int dataSize = fileSize - sizeof(uint256);
-    //Don't try to resize to a negative number if file is small
-    if ( dataSize < 0 ) dataSize = 0;
     vector<unsigned char> vchData;
     vchData.resize(dataSize);
     uint256 hashIn;

@@ -5,18 +5,7 @@
 
 #include "walletdb.h"
 #include "wallet.h"
-
-#include <iostream>
-#include <fstream>
-
-#include <boost/version.hpp>
 #include <boost/filesystem.hpp>
-#include <boost/algorithm/string.hpp>
-
-#include <boost/date_time/posix_time/posix_time.hpp>
-#include <boost/lexical_cast.hpp>
-#include <boost/variant/get.hpp>
-#include <boost/algorithm/string.hpp>
 
 using namespace std;
 using namespace boost;
@@ -427,8 +416,6 @@ DBErrors CWalletDB::LoadWallet(CWallet* pwallet)
             return DB_CORRUPT;
         }
 
-        unsigned int counter = 0;
-        
         while (true)
         {
             // Read next record
@@ -674,7 +661,9 @@ bool CWalletDB::Recover(CDBEnv& dbenv, std::string filename, bool fOnlyKeys)
             string strType, strErr;
             bool fReadOK = ReadKeyValue(&dummyWallet, ssKey, ssValue, nFileVersion, vWalletUpgrade, fIsEncrypted, fAnyUnordered, strType, strErr);
             if (!IsKeyType(strType))
+            {
                 continue;
+            }
             if (!fReadOK)
             {
                 printf("WARNING: CWalletDB::Recover skipping %s: %s\n", strType.c_str(), strErr.c_str());

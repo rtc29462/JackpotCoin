@@ -364,16 +364,22 @@ bool AppInit2()
     CheckpointsMode = Checkpoints::STRICT;
     std::string strCpMode = GetArg("-cppolicy", "strict");
 
-    if(strCpMode == "strict")
+    if (strCpMode == "strict")
+    {
         CheckpointsMode = Checkpoints::STRICT;
-
-    if(strCpMode == "advisory")
+    }
+    else if (strCpMode == "advisory")
+    {
         CheckpointsMode = Checkpoints::ADVISORY;
-
-    if(strCpMode == "permissive")
+    }
+    else if (strCpMode == "permissive")
+    {
         CheckpointsMode = Checkpoints::PERMISSIVE;
+    }
+
 
     nDerivationMethodIndex = 0;
+
 
     fTestNet = GetBoolArg("-testnet");
     if (fTestNet) {
@@ -847,6 +853,7 @@ bool AppInit2()
             pindexRescan = locator.GetBlockIndex();
         }
     }
+
     if ((pindexBest != pindexRescan) && pindexBest && pindexRescan && (pindexBest->nHeight > pindexRescan->nHeight))
     {
         uiInterface.InitMessage(_("Rescanning..."));

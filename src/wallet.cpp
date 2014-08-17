@@ -12,8 +12,8 @@
 #include "kernel.h"
 #include "coincontrol.h"
 
-#include <boost/algorithm/string/replace.hpp>
-
+// #include <boost/algorithm/string/replace.hpp>
+// 
 using namespace std;
 
 extern int nStakeMaxAge;
@@ -180,10 +180,7 @@ bool CWallet::ChangeWalletPassphrase(const SecureString& strOldWalletPassphrase,
                     pMasterKey.second.nDeriveIterations = 25000;
                 }
 
-                if (fDebug) 
-                {
-                   printf("Wallet passphrase changed to an nDeriveIterations of %i\n", pMasterKey.second.nDeriveIterations);
-                }
+                printf("Wallet passphrase changed to an nDeriveIterations of %i\n", pMasterKey.second.nDeriveIterations);
 
                 if (!crypter.SetKeyFromPassphrase(strNewWalletPassphrase, pMasterKey.second.vchSalt, pMasterKey.second.nDeriveIterations, pMasterKey.second.nDerivationMethod))
                 {
@@ -315,10 +312,8 @@ bool CWallet::EncryptWallet(const SecureString& strWalletPassphrase)
     {
         kMasterKey.nDeriveIterations = 25000;
     }
-    if (fDebug) 
-    {
-       printf("Encrypting Wallet with an nDeriveIterations of %i\n", kMasterKey.nDeriveIterations);
-    }
+
+    printf("Encrypting Wallet with an nDeriveIterations of %i\n", kMasterKey.nDeriveIterations);
 
     if (!crypter.SetKeyFromPassphrase(strWalletPassphrase, kMasterKey.vchSalt, kMasterKey.nDeriveIterations, kMasterKey.nDerivationMethod))
     {
@@ -548,7 +543,7 @@ bool CWallet::AddToWallet(const CWalletTx& wtxIn)
         }
         if (fDebug) 
         {
-            printf("AddToWallet %s  %s%s\n", wtxIn.GetHash().ToString().substr(0,10).c_str(), (fInsertedNew ? "new" : ""), (fUpdated ? "update" : ""));
+            printf("AddToWallet %s  %s%s\n", wtxIn.GetHash().ToString().c_str(), (fInsertedNew ? "new" : ""), (fUpdated ? "update" : ""));
         }
         if (fInsertedNew || fUpdated)
         {
@@ -624,18 +619,18 @@ bool CWallet::AddToWalletIfInvolvingMe(const CTransaction& tx, const CBlock* pbl
 
 bool CWallet::EraseFromWallet(uint256 hash)
 {
-    if (!fFileBacked)
+    if (fFileBacked)
     {
-        return false;
-    }
-    {
-        LOCK(cs_wallet);
-        if (mapWallet.erase(hash))
         {
-            CWalletDB(strWalletFile).EraseTx(hash);
+            LOCK(cs_wallet);
+            if (mapWallet.erase(hash))
+            {
+                CWalletDB(strWalletFile).EraseTx(hash);
+            }
         }
+        return true;
     }
-    return true;
+    return false;
 }
 
 
@@ -817,7 +812,10 @@ void CWalletTx::GetAmounts(int64& nGeneratedImmature, int64& nGeneratedMature, l
 void CWalletTx::GetAccountAmounts(const string& strAccount, int64& nGenerated, int64& nReceived,
                                   int64& nSent, int64& nFee) const
 {
-    nGenerated = nReceived = nSent = nFee = 0;
+    nGenerated = 0;
+    nReceived = 0;
+    nSent = 0;
+    nFee = 0;
 
     int64 allGeneratedImmature, allGeneratedMature, allFee;
     allGeneratedImmature = 0;
@@ -892,7 +890,7 @@ void CWalletTx::AddSupportingTransactions(CTxDB& txdb)
                 if (mi != pwallet->mapWallet.end())
                 {
                     tx = (*mi).second;
-                    BOOST_FOREACH(const CMerkleTx& txWalletPrev, (*mi).second.vtxPrev)
+                    BOOST_FOREACH (const CMerkleTx& txWalletPrev, (*mi).second.vtxPrev)
                     {
                         mapWalletPrev[txWalletPrev.GetHash()] = &txWalletPrev;
                     }
@@ -1331,7 +1329,7 @@ bool CWallet::SelectCoinsMinConf(int64 nTargetValue, unsigned int nSpendTime, in
         }
         int i = output.i;
 
-        // ppcoin: timestamp must not exceed spend time
+        // Timestamp must not exceed spend time
         if (pcoin->nTime > nSpendTime)
         {
             continue;
@@ -1404,9 +1402,8 @@ bool CWallet::SelectCoinsMinConf(int64 nTargetValue, unsigned int nSpendTime, in
                 nValueRet += vValue[i].first;
             }
 
-        if (fDebug && GetBoolArg("-printpriority"))
+        if (fDebugHigh)
         {
-            //// debug print
             printf("SelectCoins() best subset: ");
             for (unsigned int i = 0; i < vValue.size(); i++)
             {
@@ -1520,14 +1517,14 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, int64> >& vecSend, CW
                     // change transaction isn't always pay-to-bitcoin-address
                     CScript scriptChange;
 					
-                    // coin control: send change to custom address
                     if (coinControl && !boost::get<CNoDestination>(&coinControl->destChange))
                     {
+                         // coin control: send change to custom address
                          scriptChange.SetDestination(coinControl->destChange);
                     }
-                    // no coin control: send change to newly generated address
                     else
                     {
+                         // no coin control: send change to newly generated address
                          // Note: We use a new key here to keep it from being obvious which side is the change.
                          //  The drawback is that by not reusing a previous key, the change may be lost if a
                          //  backup is restored, if the backup doesn't have the new private key for the change.
@@ -1636,11 +1633,6 @@ bool CWallet::GetStakeWeight(const CKeyStore& keystore, uint64& nMinWeight, uint
         int64 nTimeWeight = GetWeight((int64)pcoin.first->nTime, (int64)GetTime());
         CBigNum bnCoinDayWeight = CBigNum(pcoin.first->vout[pcoin.second].nValue) * nTimeWeight / COIN / (24 * 60 * 60);
         
-        if (fDebugHigh) 
-        {
-            printf("GetStakeWeight() : nTimeWeight = %d, bnCoinDayWeight = %d, nWeight = %d \n", nTimeWeight, bnCoinDayWeight.getuint64(), nWeight);       
-        }
-
         // Weight is greater than zero
         if (nTimeWeight > 0)
         {
@@ -1667,14 +1659,6 @@ bool CWallet::GetStakeWeight(const CKeyStore& keystore, uint64& nMinWeight, uint
 bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int64 nSearchInterval, CTransaction& txNew)
 {
 
-    // No coin to mint 
-    int64 nBalance = GetBalance();
-    if (nBalance <= nReserveBalance)
-    {
-        return false;
-    }
-
-    //
     // Coin Split Transaction Limit 
     // = Forced split age                : 1 day
     // = None split age                  : 4 days
@@ -1683,6 +1667,7 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
     //
     static unsigned int nStakeSplitAge       = (4 * 24 * 60 * 60); 
     static unsigned int nStakeSplitAgeForced = (1 * 24 * 60 * 60);
+    int64 nBalance = GetBalance();
 	int64 nStakeSplitLimitByAmounts = 100000 * COIN / 4;
 	int64 nStakeSplitLimitByBalance = nBalance / 64;
     int64 nCombineThreshold = 0;
@@ -1705,6 +1690,10 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
     txNew.vout.push_back(CTxOut(0, scriptEmpty));    
 
     // Choose coins to use
+    if (nBalance <= nReserveBalance)
+    {
+        return false;
+    }
     set<pair<const CWalletTx*,unsigned int> > setCoins;
     vector<const CWalletTx*> vwtxPrev;
     int64 nValueIn = 0;
@@ -1763,10 +1752,6 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
         bool fKernelFound = false;
         for (unsigned int n = 0; n < min(nSearchInterval, (int64)nMaxStakeSearchInterval) && !fKernelFound && !fShutdown; n++)
         {
-            if (fDebugHigh) 
-            {
-			    printf("CreatCoinStak() : Kernel Hash Check Starting .....\n");
-            }
             // Search backward in time from the given txNew timestamp 
             // Search nSearchInterval seconds back up to nMaxStakeSearchInterval
             uint256 hashProofOfStake = 0;
@@ -2323,9 +2308,9 @@ void CWallet::KeepKey(int64 nIndex)
         CWalletDB walletdb(strWalletFile);
         walletdb.ErasePool(nIndex);
     }
-    if (fDebug)
+    if (fDebugHigh)
     {
-        printf("keypool keep %"PRI64d"\n", nIndex);
+        printf("KeepKey() : keypool keep %"PRI64d"\n", nIndex);
     }
 }
 
@@ -2337,9 +2322,9 @@ void CWallet::ReturnKey(int64 nIndex)
         LOCK(cs_wallet);
         setKeyPool.insert(nIndex);
     }
-    if(fDebug)
+    if (fDebugHigh)
     {
-        printf("keypool return %"PRI64d"\n", nIndex);
+        printf("ReturnKey() : keypool return %"PRI64d"\n", nIndex);
     }
 }
 
@@ -2415,7 +2400,7 @@ std::map<CTxDestination, int64> CWallet::GetAddressBalances()
                 {
                     continue;
                 }
-                if(!ExtractDestination(pcoin->vout[i].scriptPubKey, addr))
+                if (!ExtractDestination(pcoin->vout[i].scriptPubKey, addr))
                 {
                     continue;
                 }
@@ -2555,9 +2540,9 @@ void CWallet::FixSpentCoins(int& nMismatchFound, int64& nBalanceInQuestion, bool
             {
                 if (IsMine(pcoin->vout[n]) && pcoin->IsSpent(n) && (txindex.vSpent.size() <= n || txindex.vSpent[n].IsNull()))
                 {
-                    if (fDebug) 
+                    if (fDebugHigh) 
                     {
-                        printf("FixSpentCoins found lost coin %s JPC %s[%d], %s\n",
+                        printf("FixSpentCoins() : found lost coin %s JPC %s[%d], %s\n",
                                FormatMoney(pcoin->vout[n].nValue).c_str(), pcoin->GetHash().ToString().c_str(), n, fCheckOnly ? "repair not attempted" : "repairing");
                     }
                     nMismatchFound++;
@@ -2570,9 +2555,9 @@ void CWallet::FixSpentCoins(int& nMismatchFound, int64& nBalanceInQuestion, bool
                 }
                 else if (IsMine(pcoin->vout[n]) && !pcoin->IsSpent(n) && (txindex.vSpent.size() > n && !txindex.vSpent[n].IsNull()))
                 {
-                    if (fDebug)
+                    if (fDebugHigh)
                     {
-                        printf("FixSpentCoins found spent coin %s JPC %s[%d], %s\n",
+                        printf("FixSpentCoins() : found spent coin %s JPC %s[%d], %s\n",
                                FormatMoney(pcoin->vout[n].nValue).c_str(), pcoin->GetHash().ToString().c_str(), n, fCheckOnly? "repair not attempted" : "repairing");
                     }
                     nMismatchFound++;
@@ -2623,9 +2608,9 @@ CPubKey CReserveKey::GetReservedKey()
         }
         else
         {
-            if (fDebug) 
+            if (fDebugHigh) 
             {
-               printf("CReserveKey::GetReservedKey(): Warning: Using default key instead of a new key, top up your keypool!");
+               printf("GetReservedKey() : Warning: Using default key instead of a new key, top up your keypool!");
             }
             vchPubKey = pwallet->vchDefaultKey;
         }
