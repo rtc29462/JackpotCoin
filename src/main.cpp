@@ -77,7 +77,7 @@ int64 nHPSTimerStart;
 // Settings
 int64 nTransactionFee = MIN_TX_FEE;
 
-static const int NUM_OF_POW_CHECKPOINT = 23;
+static const int NUM_OF_POW_CHECKPOINT = 24;
 static const int checkpointPoWHeight[NUM_OF_POW_CHECKPOINT][2] =
 {
 	{ 25000,  5587},
@@ -102,7 +102,8 @@ static const int checkpointPoWHeight[NUM_OF_POW_CHECKPOINT][2] =
     {500000, 68169},
     {525000, 71250},
     {550000, 74229},
-    {575000, 77161}
+    {575000, 77161},
+    {600000, 80039}
 };
 
 //

@@ -1660,15 +1660,15 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
 {
 
     // Coin Split Transaction Limit 
-    // = Forced split age                : 1 day
-    // = None split age                  : 4 days
-    // = None split coin number          : 1/4 of Initial Reward of PoW
+    // = Forced split age                : 2 day
+    // = None split age                  : 7 days
+    // = None split coin number          : Initial block size of PoW
     // = None split coin base on balance : 1/64 
     //
-    static unsigned int nStakeSplitAge       = (4 * 24 * 60 * 60); 
-    static unsigned int nStakeSplitAgeForced = (1 * 24 * 60 * 60);
+    static unsigned int nStakeSplitAge       = (7 * 24 * 60 * 60); 
+    static unsigned int nStakeSplitAgeForced = (2 * 24 * 60 * 60);
     int64 nBalance = GetBalance();
-	int64 nStakeSplitLimitByAmounts = 100000 * COIN / 4;
+	int64 nStakeSplitLimitByAmounts = 100000 * COIN;
 	int64 nStakeSplitLimitByBalance = nBalance / 64;
     int64 nCombineThreshold = 0;
 
