@@ -8,17 +8,16 @@
 #include <string>
 #include <vector>
 
-#include <stdint.h>
-
 #include <boost/foreach.hpp>
 #include <boost/variant.hpp>
 
 #include "keystore.h"
 #include "bignum.h"
 
-typedef std::vector<unsigned char> valtype;
-
+class CCoins;
 class CTransaction;
+
+static const unsigned int MAX_SCRIPT_ELEMENT_SIZE = 520; // bytes
 
 /** Signature hash types/flags */
 enum
@@ -29,6 +28,14 @@ enum
     SIGHASH_ANYONECANPAY = 0x80,
 };
 
+/** Script verification flags */
+enum
+{
+    SCRIPT_VERIFY_NONE      = 0,
+    SCRIPT_VERIFY_P2SH      = (1U << 0),
+    SCRIPT_VERIFY_STRICTENC = (1U << 1),
+    SCRIPT_VERIFY_NOCACHE   = (1U << 2),
+};
 
 enum txnouttype
 {
@@ -38,7 +45,6 @@ enum txnouttype
     TX_PUBKEYHASH,
     TX_SCRIPTHASH,
     TX_MULTISIG,
-    TX_NULL_DATA,
 };
 
 class CNoDestination {
@@ -195,7 +201,6 @@ enum opcodetype
 
 
     // template matching params
-    OP_SMALLDATA = 0xf9,
     OP_SMALLINTEGER = 0xfa,
     OP_PUBKEYS = 0xfb,
     OP_PUBKEYHASH = 0xfd,
@@ -343,8 +348,10 @@ public:
 
     CScript& operator<<(const CPubKey& key)
     {
-        std::vector<unsigned char> vchKey = key.Raw();
-        return (*this) << vchKey;
+        assert(key.size() < OP_PUSHDATA1);
+        insert(end(), (unsigned char)key.size());
+        insert(end(), key.begin(), key.end());
+        return *this;
     }
 
     CScript& operator<<(const CBigNum& b)
@@ -432,7 +439,7 @@ public:
         // Immediate operand
         if (opcode <= OP_PUSHDATA4)
         {
-            unsigned int nSize;
+            unsigned int nSize = 0;
             if (opcode < OP_PUSHDATA1)
             {
                 nSize = opcode;
@@ -541,11 +548,11 @@ public:
         return true;
     }
 
-    // Called by CTransaction::IsStandard.
+    // Called by IsStandardTx.
     bool HasCanonicalPushes() const;
 
     void SetDestination(const CTxDestination& address);
-    void SetMultisig(int nRequired, const std::vector<CKey>& keys);
+    void SetMultisig(int nRequired, const std::vector<CPubKey>& keys);
 
 
     void PrintHex() const
@@ -553,7 +560,7 @@ public:
         printf("CScript(%s)\n", HexStr(begin(), end(), true).c_str());
     }
 
-    std::string ToString(bool fShort=false) const
+    std::string ToString() const
     {
         std::string str;
         opcodetype opcode;
@@ -569,7 +576,7 @@ public:
                 return str;
             }
             if (0 <= opcode && opcode <= OP_PUSHDATA4)
-                str += fShort? ValueString(vch).substr(0, 10) : ValueString(vch);
+                str += ValueString(vch);
             else
                 str += GetOpName(opcode);
         }
@@ -587,24 +594,97 @@ public:
     }
 };
 
+/** Compact serializer for scripts.
+ *
+ *  It detects common cases and encodes them much more efficiently.
+ *  3 special cases are defined:
+ *  * Pay to pubkey hash (encoded as 21 bytes)
+ *  * Pay to script hash (encoded as 21 bytes)
+ *  * Pay to pubkey starting with 0x02, 0x03 or 0x04 (encoded as 33 bytes)
+ *
+ *  Other scripts up to 121 bytes require 1 byte + script length. Above
+ *  that, scripts up to 16505 bytes require 2 bytes + script length.
+ */
+class CScriptCompressor
+{
+private:
+    // make this static for now (there are only 6 special scripts defined)
+    // this can potentially be extended together with a new nVersion for
+    // transactions, in which case this value becomes dependent on nVersion
+    // and nHeight of the enclosing transaction.
+    static const unsigned int nSpecialScripts = 6;
 
+    CScript &script;
 
+protected:
+    // These check for scripts for which a special case with a shorter encoding is defined.
+    // They are implemented separately from the CScript test, as these test for exact byte
+    // sequence correspondences, and are more strict. For example, IsToPubKey also verifies
+    // whether the public key is valid (as invalid ones cannot be represented in compressed
+    // form).
+    bool IsToKeyID(CKeyID &hash) const;
+    bool IsToScriptID(CScriptID &hash) const;
+    bool IsToPubKey(CPubKey &pubkey) const;
 
+    bool Compress(std::vector<unsigned char> &out) const;
+    unsigned int GetSpecialSize(unsigned int nSize) const;
+    bool Decompress(unsigned int nSize, const std::vector<unsigned char> &out);
 
-bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CScript& script, const CTransaction& txTo, unsigned int nIn, int nHashType);
+public:
+    CScriptCompressor(CScript &scriptIn) : script(scriptIn) { }
+
+    unsigned int GetSerializeSize(int nType, int nVersion) const {
+        std::vector<unsigned char> compr;
+        if (Compress(compr))
+            return compr.size();
+        unsigned int nSize = script.size() + nSpecialScripts;
+        return script.size() + VARINT(nSize).GetSerializeSize(nType, nVersion);
+    }
+
+    template<typename Stream>
+    void Serialize(Stream &s, int nType, int nVersion) const {
+        std::vector<unsigned char> compr;
+        if (Compress(compr)) {
+            s << CFlatData(&compr[0], &compr[compr.size()]);
+            return;
+        }
+        unsigned int nSize = script.size() + nSpecialScripts;
+        s << VARINT(nSize);
+        s << CFlatData(&script[0], &script[script.size()]);
+    }
+
+    template<typename Stream>
+    void Unserialize(Stream &s, int nType, int nVersion) {
+        unsigned int nSize = 0;
+        s >> VARINT(nSize);
+        if (nSize < nSpecialScripts) {
+            std::vector<unsigned char> vch(GetSpecialSize(nSize), 0x00);
+            s >> REF(CFlatData(&vch[0], &vch[vch.size()]));
+            Decompress(nSize, vch);
+            return;
+        }
+        nSize -= nSpecialScripts;
+        script.resize(nSize);
+        s >> REF(CFlatData(&script[0], &script[script.size()]));
+    }
+};
+
+bool IsCanonicalPubKey(const std::vector<unsigned char> &vchPubKey);
+bool IsCanonicalSignature(const std::vector<unsigned char> &vchSig);
+
+uint256 SignatureHash(CScript scriptCode, const CTransaction& txTo, unsigned int nIn, int nHashType);
+bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CScript& script, const CTransaction& txTo, unsigned int nIn, unsigned int flags, int nHashType);
 bool Solver(const CScript& scriptPubKey, txnouttype& typeRet, std::vector<std::vector<unsigned char> >& vSolutionsRet);
 int ScriptSigArgsExpected(txnouttype t, const std::vector<std::vector<unsigned char> >& vSolutions);
-bool IsStandard(const CScript& scriptPubKey, txnouttype& whichType);
+bool IsStandard(const CScript& scriptPubKey);
 bool IsMine(const CKeyStore& keystore, const CScript& scriptPubKey);
 bool IsMine(const CKeyStore& keystore, const CTxDestination &dest);
-void ExtractAffectedKeys(const CKeyStore &keystore, const CScript& scriptPubKey, std::vector<CKeyID> &vKeys);
 bool ExtractDestination(const CScript& scriptPubKey, CTxDestination& addressRet);
 bool ExtractDestinations(const CScript& scriptPubKey, txnouttype& typeRet, std::vector<CTxDestination>& addressRet, int& nRequiredRet);
 bool SignSignature(const CKeyStore& keystore, const CScript& fromPubKey, CTransaction& txTo, unsigned int nIn, int nHashType=SIGHASH_ALL);
 bool SignSignature(const CKeyStore& keystore, const CTransaction& txFrom, CTransaction& txTo, unsigned int nIn, int nHashType=SIGHASH_ALL);
-bool VerifyScript(const CScript& scriptSig, const CScript& scriptPubKey, const CTransaction& txTo, unsigned int nIn,
-                  bool fValidatePayToScriptHash, int nHashType);
-bool VerifySignature(const CTransaction& txFrom, const CTransaction& txTo, unsigned int nIn, bool fValidatePayToScriptHash, int nHashType);
+bool VerifyScript(const CScript& scriptSig, const CScript& scriptPubKey, const CTransaction& txTo, unsigned int nIn, unsigned int flags, int nHashType);
+bool VerifySignature(const CTransaction& txFrom, const CTransaction& txTo, unsigned int nIn, int nHashType);
 
 // Given two sets of signatures for scriptPubKey, possibly with OP_0 placeholders,
 // combine them intelligently and return the result.

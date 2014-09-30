@@ -1,3 +1,9 @@
+// Copyright (c) 2011-2014 The Bitcoin developers
+// Distributed under the MIT/X11 software license, see the accompanying
+// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+
+#include <QApplication>
+
 #include "guiutil.h"
 #include "bitcoinaddressvalidator.h"
 #include "walletmodel.h"
@@ -14,9 +20,8 @@
 #else
 #include <QUrl>
 #endif
-#include <QTextDocument>
+#include <QTextDocument> // for Qt::mightBeRichText
 #include <QAbstractItemView>
-#include <QApplication>
 #include <QClipboard>
 #include <QFileDialog>
 #include <QDesktopServices>
@@ -88,9 +93,7 @@ bool parseBitcoinURI(const QUrl &uri, SendCoinsRecipient *out)
 {
     // return if URI is not valid or is no bitcoin URI
     if (!uri.isValid() || (uri.scheme() != QString("jackpotcoin")))
-    {
         return false;
-    }
      
     SendCoinsRecipient rv;
     rv.address = uri.path();
@@ -129,11 +132,9 @@ bool parseBitcoinURI(const QUrl &uri, SendCoinsRecipient *out)
         }
         
         if (fShouldReturnFalse)
-        {
             return false;
-        }
     }
-    
+
     if (out)
     {
         *out = rv;
@@ -145,6 +146,7 @@ bool parseBitcoinURI(const QUrl &uri, SendCoinsRecipient *out)
 bool parseBitcoinURI(QString uri, SendCoinsRecipient *out)
 {
     // Convert jackpotcoin:// to jackpotcoin:
+    //
     //    Cannot handle this later, because bitcoin:// will cause Qt to see the part after // as host,
     //    which will lower-case it (and thus invalidate the address).
     if (uri.startsWith("jackpotcoin://"))
@@ -179,11 +181,9 @@ QString HtmlEscape(const std::string& str, bool fMultiLine)
 
 void copyEntryData(QAbstractItemView *view, int column, int role)
 {
-    if ((!view) || (!view->selectionModel()))
-    {
+    if(!view || !view->selectionModel())
         return;
-    }
-    
+
     QModelIndexList selection = view->selectionModel()->selectedRows(column);
 
     if (!selection.isEmpty())
@@ -210,8 +210,7 @@ QString getSaveFileName(QWidget *parent, const QString &caption,
 {
     QString selectedFilter;
     QString myDir;
-    // Default to user documents location
-    if (dir.isEmpty()) 
+    if(dir.isEmpty()) // Default to user documents location
     {
 #if QT_VERSION < 0x050000
         myDir = QDesktopServices::storageLocation(QDesktopServices::DocumentsLocation);
@@ -225,7 +224,7 @@ QString getSaveFileName(QWidget *parent, const QString &caption,
     }
     QString result = QFileDialog::getSaveFileName(parent, caption, myDir, filter, &selectedFilter);
 
-    // Extract first suffix from filter pattern "Description (*.foo)" or "Description (*.foo *.bar ...)
+    /* Extract first suffix from filter pattern "Description (*.foo)" or "Description (*.foo *.bar ...) */
     QRegExp filter_re(".* \\(\\*\\.(.*)[ \\)]");
     QString selectedSuffix;
     if (filter_re.exactMatch(selectedFilter))
@@ -233,22 +232,20 @@ QString getSaveFileName(QWidget *parent, const QString &caption,
         selectedSuffix = filter_re.cap(1);
     }
 
-    // Add suffix if needed
+    /* Add suffix if needed */
     QFileInfo info(result);
     if (!result.isEmpty())
     {
         if (info.suffix().isEmpty() && !selectedSuffix.isEmpty())
         {
-            // No suffix specified, add selected suffix
+            /* No suffix specified, add selected suffix */
             if (!result.endsWith("."))
-            {
                 result.append(".");
-            }
             result.append(selectedSuffix);
         }
     }
 
-    // Return selected suffix if asked to
+    /* Return selected suffix if asked to */
     if (selectedSuffixOut)
     {
         *selectedSuffixOut = selectedSuffix;
@@ -259,7 +256,7 @@ QString getSaveFileName(QWidget *parent, const QString &caption,
 
 Qt::ConnectionType blockingGUIThreadConnection()
 {
-    if (QThread::currentThread() != QCoreApplication::instance()->thread())
+    if(QThread::currentThread() != qApp->thread())
     {
         return Qt::BlockingQueuedConnection;
     }
@@ -272,14 +269,10 @@ Qt::ConnectionType blockingGUIThreadConnection()
 
 bool checkPoint(const QPoint &p, const QWidget *w)
 {
-    QWidget *atW = qApp->widgetAt(w->mapToGlobal(p));
-    if (!atW) 
-    {
-        return false;
-    }
-    return (atW->topLevelWidget() == w);
+    QWidget *atW = QApplication::widgetAt(w->mapToGlobal(p));
+    if (!atW) return false;
+    return atW->topLevelWidget() == w;
 }
-
 
 bool isObscured(QWidget *w)
 {
@@ -295,11 +288,9 @@ void openDebugLogfile()
 {
     boost::filesystem::path pathDebug = GetDataDir() / "debug.log";
 
-    // Open debug.log with the associated application
+    /* Open debug.log with the associated application */
     if (boost::filesystem::exists(pathDebug))
-    {
         QDesktopServices::openUrl(QUrl::fromLocalFile(QString::fromStdString(pathDebug.string())));
-    }
 }
 
 
@@ -316,7 +307,7 @@ bool ToolTipToRichTextFilter::eventFilter(QObject *obj, QEvent *evt)
     {
         QWidget *widget = static_cast<QWidget*>(obj);
         QString tooltip = widget->toolTip();
-        if ((tooltip.size() > size_threshold) && !tooltip.startsWith("<qt") && !Qt::mightBeRichText(tooltip))
+        if(tooltip.size() > size_threshold && !tooltip.startsWith("<qt") && !Qt::mightBeRichText(tooltip))
         {
             // Envelop with <qt></qt> to make sure Qt detects this as rich text
             // Escape the current message as HTML and replace \n by <br>
@@ -408,22 +399,17 @@ boost::filesystem::path static GetAutostartDir()
     namespace fs = boost::filesystem;
 
     char* pszConfigHome = getenv("XDG_CONFIG_HOME");
-    if (pszConfigHome)
-    { 
-        return fs::path(pszConfigHome) / "autostart";
-    }
+    if (pszConfigHome) return fs::path(pszConfigHome) / "autostart";
     char* pszHome = getenv("HOME");
-    if (pszHome) 
-    { 
-        return fs::path(pszHome) / ".config" / "autostart";
-    }
+    if (pszHome) return fs::path(pszHome) / ".config" / "autostart";
+
     return fs::path();
 }
 
 
 boost::filesystem::path static GetAutostartFilePath()
 {
-    return GetAutostartDir() / "JackpotCoin.desktop";
+    return GetAutostartDir() / "jackpotcoin.desktop";
 }
 
 
@@ -431,18 +417,15 @@ bool GetStartOnSystemStartup()
 {
     boost::filesystem::ifstream optionFile(GetAutostartFilePath());
     if (!optionFile.good())
-    {
         return false;
-    }
     // Scan through file for "Hidden=true":
     std::string line;
     while (!optionFile.eof())
     {
         getline(optionFile, line);
-        if ((line.find("Hidden") != std::string::npos) && (line.find("true") != std::string::npos))
-        {
+        if (line.find("Hidden") != std::string::npos &&
+            line.find("true") != std::string::npos)
             return false;
-        }
     }
     optionFile.close();
 
@@ -453,24 +436,18 @@ bool GetStartOnSystemStartup()
 bool SetStartOnSystemStartup(bool fAutoStart)
 {
     if (!fAutoStart)
-    {
         boost::filesystem::remove(GetAutostartFilePath());
-    }
     else
     {
         char pszExePath[MAX_PATH+1];
         memset(pszExePath, 0, sizeof(pszExePath));
         if (readlink("/proc/self/exe", pszExePath, sizeof(pszExePath)-1) == -1)
-        {
             return false;
-        }
         
         boost::filesystem::create_directories(GetAutostartDir());
         boost::filesystem::ofstream optionFile(GetAutostartFilePath(), std::ios_base::out|std::ios_base::trunc);
         if (!optionFile.good())
-        {
             return false;
-        }
         // Write a bitcoin.desktop file to the autostart directory:
         optionFile << "[Desktop Entry]\n";
         optionFile << "Type=Application\n";
@@ -495,20 +472,17 @@ LSSharedFileListItemRef findStartupItemInList(LSSharedFileListRef list, CFURLRef
 {
     // loop through the list of startup items and try to find the bitcoin app
     CFArrayRef listSnapshot = LSSharedFileListCopySnapshot(list, NULL);
-    for (int i = 0; i < CFArrayGetCount(listSnapshot); i++) 
-    {
+    for (int i = 0; i < CFArrayGetCount(listSnapshot); i++) {
         LSSharedFileListItemRef item = (LSSharedFileListItemRef)CFArrayGetValueAtIndex(listSnapshot, i);
         UInt32 resolutionFlags = kLSSharedFileListNoUserInteraction | kLSSharedFileListDoNotMountVolumes;
         CFURLRef currentItemURL = NULL;
         LSSharedFileListItemResolve(item, resolutionFlags, &currentItemURL, NULL);
-        if (currentItemURL && CFEqual(currentItemURL, findUrl)) 
-        {
+        if (currentItemURL && CFEqual(currentItemURL, findUrl)) {
             // found
             CFRelease(currentItemURL);
             return item;
         }
-        if(currentItemURL) 
-        {
+        if (currentItemURL) {
             CFRelease(currentItemURL);
         }
     }
@@ -531,13 +505,11 @@ bool SetStartOnSystemStartup(bool fAutoStart)
     LSSharedFileListRef loginItems = LSSharedFileListCreate(NULL, kLSSharedFileListSessionLoginItems, NULL);
     LSSharedFileListItemRef foundItem = findStartupItemInList(loginItems, bitcoinAppUrl);
 
-    if (fAutoStart && !foundItem) 
-    {
+    if (fAutoStart && !foundItem) {
         // add bitcoin app to startup item list
         LSSharedFileListInsertItemURL(loginItems, kLSSharedFileListItemBeforeFirst, NULL, NULL, bitcoinAppUrl, NULL, NULL);
     }
-    else if(!fAutoStart && foundItem) 
-    {
+    else if(!fAutoStart && foundItem) {
         // remove item
         LSSharedFileListItemRemove(loginItems, foundItem);
     }
@@ -556,7 +528,7 @@ HelpMessageBox::HelpMessageBox(QWidget *parent) :
     header = tr("JackpotCoin-Qt") + " " + tr("version") + " " +
         QString::fromStdString(FormatFullVersion()) + "\n\n" +
         tr("Usage:") + "\n" +
-        "  JackpotCoin-qt [" + tr("command-line options") + "]                     " + "\n";
+        "  jackpotcoin-qt [" + tr("command-line options") + "]                     " + "\n";
 
     coreOptions = QString::fromStdString(HelpMessage());
 

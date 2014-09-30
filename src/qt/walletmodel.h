@@ -1,3 +1,7 @@
+// Copyright (c) 2011-2013 The Bitcoin developers
+// Distributed under the MIT/X11 software license, see the accompanying
+// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+
 #ifndef WALLETMODEL_H
 #define WALLETMODEL_H
 
@@ -5,7 +9,7 @@
 #include <vector>
 #include <map>
 
-#include "allocators.h"
+#include "allocators.h" /* for SecureString */
 
 class OptionsModel;
 class AddressTableModel;
@@ -30,7 +34,7 @@ public:
     qint64 amount;
 };
 
-//  Interface to Bitcoin wallet from Qt view code.
+/** Interface to Bitcoin wallet from Qt view code. */
 class WalletModel : public QObject
 {
     Q_OBJECT
@@ -39,8 +43,7 @@ public:
     explicit WalletModel(CWallet *wallet, OptionsModel *optionsModel, QObject *parent = 0);
     ~WalletModel();
     
-    // Returned status by sendCoins
-    enum StatusCode 
+    enum StatusCode // Returned by sendCoins
     {
         OK,
         InvalidAmount,
@@ -48,24 +51,23 @@ public:
         AmountExceedsBalance,
         AmountWithFeeExceedsBalance,
         DuplicateAddress,
-        TransactionCreationFailed,
+        TransactionCreationFailed, // Error returned when wallet is still locked
         TransactionCommitFailed,
         Aborted
     };
 
-    // Status of wallet has been encypted and locked/unlocked
     enum EncryptionStatus
     {
-        Unencrypted,
-        Locked,
-        Unlocked
+        Unencrypted,  // !wallet->IsCrypted()
+        Locked,       // wallet->IsCrypted() && wallet->IsLocked()
+        Unlocked      // wallet->IsCrypted() && !wallet->IsLocked()
     };
 
     OptionsModel *getOptionsModel();
     AddressTableModel *getAddressTableModel();
     TransactionTableModel *getTransactionTableModel();
 
-    qint64 getBalance() const;
+    qint64 getBalance(const CCoinControl *coinControl=NULL) const;
     qint64 getStake() const;
     qint64 getUnconfirmedBalance() const;
     qint64 getImmatureBalance() const;
@@ -78,7 +80,9 @@ public:
     // Return status record for SendCoins, contains error id + information
     struct SendCoinsReturn
     {
-		SendCoinsReturn(StatusCode status=Aborted, qint64 fee = 0, QString hex=QString()):
+        SendCoinsReturn(StatusCode status=Aborted,
+                         qint64 fee=0,
+                         QString hex=QString()):
             status(status), fee(fee), hex(hex) {}
         StatusCode status;
         qint64 fee;  // is used in case status is "AmountWithFeeExceedsBalance"
@@ -96,50 +100,28 @@ public:
     bool changePassphrase(const SecureString &oldPass, const SecureString &newPass);
     // Wallet backup
     bool backupWallet(const QString &filename);
+    // Wallet request unlock/lock
+    void requestUnlock();
+    void requestLock();
 
-    // RAI object for unlocking wallet, returned by requestUnlock()
-    class UnlockContext
-    {
-        
-    public:
-        UnlockContext(WalletModel *wallet, bool valid, bool relock);
-        ~UnlockContext();
+    /* Unlock/Lock wallet */
+    bool unlockWallet();
+    bool lockWallet();
 
-        bool isValid() const 
-        { 
-            return valid; 
-        }
-
-        // Copy operator and constructor transfer the context
-        UnlockContext(const UnlockContext& obj) 
-        { 
-            CopyFrom(obj); 
-        }
-        UnlockContext& operator=(const UnlockContext& rhs) 
-        { 
-            CopyFrom(rhs); 
-            return *this; 
-        }
-        
-    private:
-        WalletModel *wallet;
-        bool valid;
-        mutable bool relock;          // mutable, as it can be set to false by copying
-
-        void CopyFrom(const UnlockContext& rhs);
-        
-    };
-
-    UnlockContext requestUnlock();
-	
     bool getPubKey(const CKeyID &address, CPubKey& vchPubKeyOut) const;
     void getOutputs(const std::vector<COutPoint>& vOutpoints, std::vector<COutput>& vOutputs);
     void listCoins(std::map<QString, std::vector<COutput> >& mapCoins) const;
 
+    bool isLockedCoin(uint256 hash, unsigned int n) const;
+    void lockCoin(COutPoint& output);
+    void unlockCoin(COutPoint& output);
+    void listLockedCoins(std::vector<COutPoint>& vOutpts);
+
 private:
     CWallet *wallet;
 
-    // Wallet has an options model for wallet-specific options such as Transaction Fee
+    // Wallet has an options model for wallet-specific options
+    // (transaction fee, for example)
     OptionsModel *optionsModel;
 
     AddressTableModel *addressTableModel;
@@ -160,15 +142,6 @@ private:
     void unsubscribeFromCoreSignals();
     void checkBalanceChanged();
 
-public slots:
-    // Wallet status might have changed
-    void updateStatus();
-    // New transaction, or transaction changed status
-    void updateTransaction(const QString &hash, int status);
-    // New, updated or removed address book entry
-    void updateAddressBook(const QString &address, const QString &label, bool isMine, int status);
-    // Current, immature or unconfirmed balance might have changed - emit 'balanceChanged' if so
-    void pollBalanceChanged();
 
 signals:
     // Signal that balance in wallet changed
@@ -183,9 +156,19 @@ signals:
     // It is valid behaviour for listeners to keep the wallet locked after this signal;
     // this means that the unlocking failed or was cancelled.
     void requireUnlock();
-    // Asynchronous error notification
-    void error(const QString &title, const QString &message, bool modal);
+    // Asynchronous message notification
+    void message(const QString &title, const QString &message, unsigned int style);
     
+public slots:
+    /* Wallet status might have changed */
+    void updateStatus();
+    /* New transaction, or transaction changed status */
+    void updateTransaction(const QString &hash, int status);
+    /* New, updated or removed address book entry */
+    void updateAddressBook(const QString &address, const QString &label, bool isMine, int status);
+    /* Current, immature or unconfirmed balance might have changed - emit 'balanceChanged' if so */
+    void pollBalanceChanged();
+
 };
 
 #endif // WALLETMODEL_H

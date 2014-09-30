@@ -1,3 +1,7 @@
+// Copyright (c) 2011-2013 The Bitcoin developers
+// Distributed under the MIT/X11 software license, see the accompanying
+// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+
 #include "addresstablemodel.h"
 #include "guiutil.h"
 #include "walletmodel.h"
@@ -6,7 +10,8 @@
 #include "base58.h"
 
 #include <QFont>
-#include <QColor>
+
+extern bool fWalletUnlockMintOnly;
 
 const QString AddressTableModel::Send = "S";
 const QString AddressTableModel::Receive = "R";
@@ -32,15 +37,15 @@ struct AddressTableEntryLessThan
 {
     bool operator()(const AddressTableEntry &a, const AddressTableEntry &b) const
     {
-        return (a.address < b.address);
+        return a.address < b.address;
     }
     bool operator()(const AddressTableEntry &a, const QString &b) const
     {
-        return (a.address < b);
+        return a.address < b;
     }
     bool operator()(const QString &a, const AddressTableEntry &b) const
     {
-        return (a < b.address);
+        return a < b.address;
     }
 };
 
@@ -70,6 +75,7 @@ public:
                                   QString::fromStdString(address.ToString())));
             }
         }
+        // qLowerBound() and qUpperBound() require our cachedAddressTable list to be sorted in asc order
         qSort(cachedAddressTable.begin(), cachedAddressTable.end(), AddressTableEntryLessThan());
     }
 
@@ -171,18 +177,16 @@ int AddressTableModel::columnCount(const QModelIndex &parent) const
 QVariant AddressTableModel::data(const QModelIndex &index, int role) const
 {
     if (!index.isValid())
-    {
         return QVariant();
-    }
     
     AddressTableEntry *rec = static_cast<AddressTableEntry*>(index.internalPointer());
 
-    if ((role == Qt::DisplayRole) || (role == Qt::EditRole))
+    if(role == Qt::DisplayRole || role == Qt::EditRole)
     {
         switch (index.column())
         {
           case Label:
-               if (rec->label.isEmpty() && (role == Qt::DisplayRole))
+            if(rec->label.isEmpty() && role == Qt::DisplayRole)
                {
                    return tr("(no label)");
                }
@@ -221,58 +225,56 @@ QVariant AddressTableModel::data(const QModelIndex &index, int role) const
 
 bool AddressTableModel::setData(const QModelIndex & index, const QVariant & value, int role)
 {
-    if (index.isValid())
+    if(!index.isValid())
+        return false;
+    AddressTableEntry *rec = static_cast<AddressTableEntry*>(index.internalPointer());   
+    editStatus = OK; 
+    if (role == Qt::EditRole)
     {
-        AddressTableEntry *rec = static_cast<AddressTableEntry*>(index.internalPointer());   
-        editStatus = OK; 
-        if (role == Qt::EditRole)
+        LOCK(wallet->cs_wallet); /* For SetAddressBook / DelAddressBook */
+        CTxDestination curAddress = CBitcoinAddress(rec->address.toStdString()).Get();
+
+        if(index.column() == Label)
         {
-            switch (index.column())
+            // Do nothing, if old label == new label
+            if(rec->label == value.toString())
             {
-              case Label:
-                   // Do nothing, if old label == new label
-                   if (rec->label == value.toString())
-                   {
-                       editStatus = NO_CHANGES;
-                       return false;
-                   }
-                   wallet->SetAddressBookName(CBitcoinAddress(rec->address.toStdString()).Get(), value.toString().toStdString());
-                   rec->label = value.toString();
-                   break;
-              case Address:
-                   // Do nothing, if old address == new address
-                   if (CBitcoinAddress(rec->address.toStdString()) == CBitcoinAddress(value.toString().toStdString()))
-                   {
-                       editStatus = NO_CHANGES;
-                       return false;
-                   }
-                   // Refuse to set invalid address, set error status and return false
-                   else if (!walletModel->validateAddress(value.toString()))
-                   {
-                       editStatus = INVALID_ADDRESS;
-                       return false;
-                   }
-                   // Check for duplicate addresses to prevent accidental deletion of addresses, if you try
-                   // to paste an existing address over another address (with a different label)
-                   else if (wallet->mapAddressBook.count(CBitcoinAddress(value.toString().toStdString()).Get()))
-                   {
-                       editStatus = DUPLICATE_ADDRESS;
-                       return false;
-                   }
-                   // Double-check that we're not overwriting a receiving address
-                   else if (rec->type == AddressTableEntry::Sending)
-                   {
-                       LOCK(wallet->cs_wallet);
-                       // Remove old entry
-                       wallet->DelAddressBookName(CBitcoinAddress(rec->address.toStdString()).Get());
-                       // Add new entry with new address
-                       wallet->SetAddressBookName(CBitcoinAddress(value.toString().toStdString()).Get(), rec->label.toStdString());
-                   }
-                   break;
+                editStatus = NO_CHANGES;
+                return false;
             }
-    
-            return true;
+            wallet->SetAddressBookName(curAddress, value.toString().toStdString());
+        } else if(index.column() == Address) {
+            CTxDestination newAddress = CBitcoinAddress(value.toString().toStdString()).Get();
+            // Refuse to set invalid address, set error status and return false
+            if(boost::get<CNoDestination>(&newAddress))
+            {
+                editStatus = INVALID_ADDRESS;
+                return false;
+            }
+            // Do nothing, if old address == new address
+            else if(newAddress == curAddress)
+            {
+                editStatus = NO_CHANGES;
+                return false;
+            }
+            // Check for duplicate addresses to prevent accidental deletion of addresses, if you try
+            // to paste an existing address over another address (with a different label)
+            else if(wallet->mapAddressBook.count(newAddress))
+            {
+                editStatus = DUPLICATE_ADDRESS;
+                return false;
+            }
+            // Double-check that we're not overwriting a receiving address
+            else if(rec->type == AddressTableEntry::Sending)
+            {
+                // Remove old entry
+                wallet->DelAddressBookName(curAddress);
+                // Add new entry with new address
+                wallet->SetAddressBookName(newAddress, rec->label.toStdString());
+            }
         }
+
+        return true;
     }
     return false;
 }
@@ -293,24 +295,19 @@ QVariant AddressTableModel::headerData(int section, Qt::Orientation orientation,
 
 Qt::ItemFlags AddressTableModel::flags(const QModelIndex & index) const
 {
-    if (index.isValid())
-    {
-        AddressTableEntry *rec = static_cast<AddressTableEntry*>(index.internalPointer());
-    
-        Qt::ItemFlags retval = Qt::ItemIsSelectable | Qt::ItemIsEnabled;
-        // Can edit address and label for sending addresses,
-        // and only label for receiving addresses.
-        if(rec->type == AddressTableEntry::Sending ||
-          (rec->type == AddressTableEntry::Receiving && index.column()==Label))
-        {
-            retval |= Qt::ItemIsEditable;
-        }
-        return retval;
-    }
-    else 
-    {
+    if(!index.isValid())
         return 0;
+    AddressTableEntry *rec = static_cast<AddressTableEntry*>(index.internalPointer());
+
+    Qt::ItemFlags retval = Qt::ItemIsSelectable | Qt::ItemIsEnabled;
+    // Can edit address and label for sending addresses,
+    // and only label for receiving addresses.
+    if(rec->type == AddressTableEntry::Sending ||
+      (rec->type == AddressTableEntry::Receiving && index.column()==Label))
+    {
+        retval |= Qt::ItemIsEditable;
     }
+    return retval;
 }
 
 
@@ -345,27 +342,25 @@ QString AddressTableModel::addRow(const QString &type, const QString &label, con
 
     if (type == Send)
     {
-        if (walletModel->validateAddress(address))
+        if (!walletModel->validateAddress(address))
         {
-            // Check for duplicate addresses
+            editStatus = INVALID_ADDRESS;
+            return QString();
+        }
+        // Check for duplicate addresses
+        {
             LOCK(wallet->cs_wallet);
-            if (wallet->mapAddressBook.count(CBitcoinAddress(strAddress).Get()))
+            if(wallet->mapAddressBook.count(CBitcoinAddress(strAddress).Get()))
             {
                 editStatus = DUPLICATE_ADDRESS;
                 return QString();
             }
         }
-        else 
-        {
-            editStatus = INVALID_ADDRESS;
-            return QString();
-        }
     }
     else if (type == Receive)
     {
         // Generate a new address to associate with given label
-        WalletModel::UnlockContext ctx(walletModel->requestUnlock());
-        if (!ctx.isValid())
+        if (!walletModel->unlockWallet())
         {
             // Unlock wallet failed or was cancelled
             editStatus = WALLET_UNLOCK_FAILURE;
@@ -396,7 +391,7 @@ bool AddressTableModel::removeRows(int row, int count, const QModelIndex & paren
 {
     Q_UNUSED(parent);
     AddressTableEntry *rec = priv->index(row);
-    if ((count != 1) || !rec || (rec->type == AddressTableEntry::Receiving))
+    if(count != 1 || !rec || rec->type == AddressTableEntry::Receiving)
     {
         // Can only remove one row at a time, and cannot remove rows not in model.
         // Also refuse to remove receiving addresses.
@@ -409,7 +404,8 @@ bool AddressTableModel::removeRows(int row, int count, const QModelIndex & paren
     return true;
 }
 
-// Look up label for address in address book, if not found return empty string.
+/* Look up label for address in address book, if not found return empty string.
+ */
 QString AddressTableModel::labelForAddress(const QString &address) const
 {
     {

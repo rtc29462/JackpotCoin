@@ -1,11 +1,11 @@
+// Copyright (c) 2011-2013 The Bitcoin developers
+// Distributed under the MIT/X11 software license, see the accompanying
+// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+
 #include "aboutdialog.h"
 #include "ui_aboutdialog.h"
 #include "clientmodel.h"
-
-#include "version.h"
-
-// Copyright year (2009-this)
-// Todo: update this when changing our copyright comments in the source
+#include "clientversion.h"
 
 AboutDialog::AboutDialog(QWidget *parent) :
     QDialog(parent),
@@ -18,7 +18,6 @@ AboutDialog::AboutDialog(QWidget *parent) :
                                 tr("Copyright") + QString(" &copy; 2012 ") + tr("The Peercoin developers") + QString("<br>") +
                                 tr("Copyright") + QString(" &copy; ") + tr("2014-%1 The JackpotCoin developers").arg(COPYRIGHT_YEAR));
 }
-
 
 void AboutDialog::setModel(ClientModel *model)
 {

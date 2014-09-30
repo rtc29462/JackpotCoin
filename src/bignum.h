@@ -6,15 +6,9 @@
 #ifndef BITCOIN_BIGNUM_H
 #define BITCOIN_BIGNUM_H
 
-#include "serialize.h"
-#include "uint256.h"
-#include "version.h"
-
 #include <stdexcept>
 #include <vector>
 #include <openssl/bn.h>
-
-#include <stdint.h>
 
 #include "util.h" // for uint64
 
@@ -116,7 +110,6 @@ public:
         }
         return ret;
     }
-
     /** Generates a cryptographically secure random k-bit number
     * @param k The bit length of the number.
     * @return
@@ -128,7 +121,6 @@ public:
         }
         return ret;
     }
-
     /**Returns the size in bits of the underlying bignum.
      *
      * @return the size
@@ -208,7 +200,7 @@ public:
         BN_mpi2bn(pch, p - pch, this);
     }
 
-    uint64 getuint64()
+   uint64 getuint64()
     {
         unsigned int nSize = BN_bn2mpi(this, NULL);
         if (nSize < 4)
@@ -250,7 +242,7 @@ public:
         BN_mpi2bn(pch, p - pch, this);
     }
 
-    void setuint256(uint256 n)
+     void setuint256(uint256 n)
     {
         unsigned char pch[sizeof(n) + 6];
         unsigned char* p = pch + 4;
@@ -278,7 +270,7 @@ public:
         BN_mpi2bn(pch, p - pch, this);
     }
 
-    uint256 getuint256()
+    uint256 getuint256() const
     {
         unsigned int nSize = BN_bn2mpi(this, NULL);
         if (nSize < 4)
@@ -367,9 +359,7 @@ public:
         unsigned int nSize = BN_num_bytes(this);
         unsigned int nCompact = 0;
         if (nSize <= 3)
-        {
             nCompact = BN_get_word(this) << 8 * (3 - nSize);
-        }
         else
         {
             CBigNum bn;
@@ -584,7 +574,6 @@ public:
         return BN_is_one(this);
     }
 
-
     bool operator!() const
     {
         return BN_is_zero(this);
@@ -764,8 +753,8 @@ inline bool operator>=(const CBigNum& a, const CBigNum& b) { return (BN_cmp(&a, 
 inline bool operator<(const CBigNum& a, const CBigNum& b)  { return (BN_cmp(&a, &b) < 0); }
 inline bool operator>(const CBigNum& a, const CBigNum& b)  { return (BN_cmp(&a, &b) > 0); }
 
-inline std::ostream& operator<<(std::ostream &strm, const CBigNum &b) { return strm << b.ToString(10); }
+ inline std::ostream& operator<<(std::ostream &strm, const CBigNum &b) { return strm << b.ToString(10); }
 
-typedef  CBigNum Bignum;
+ typedef  CBigNum Bignum;
 
 #endif

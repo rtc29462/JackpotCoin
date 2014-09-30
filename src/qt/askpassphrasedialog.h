@@ -1,3 +1,7 @@
+// Copyright (c) 2011-2013 The Bitcoin developers
+// Distributed under the MIT/X11 software license, see the accompanying
+// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+
 #ifndef ASKPASSPHRASEDIALOG_H
 #define ASKPASSPHRASEDIALOG_H
 
@@ -9,8 +13,8 @@ namespace Ui {
 
 class WalletModel;
 
-// Multifunctional dialog to ask for passphrases. Used for encryption, 
-// unlocking, and changing the passphrase.
+/** Multifunctional dialog to ask for passphrases. Used for encryption, unlocking, and changing the passphrase.
+ */
 class AskPassphraseDialog : public QDialog
 {
     Q_OBJECT
@@ -40,8 +44,8 @@ private:
 private slots:
     void textChanged();
     bool event(QEvent *event);
-    bool eventFilter(QObject *, QEvent *event);
-    
+    bool eventFilter(QObject *object, QEvent *event);
+
 };
 
 #endif // ASKPASSPHRASEDIALOG_H

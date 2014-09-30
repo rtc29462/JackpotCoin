@@ -1,25 +1,26 @@
-#include "ui_rpcconsole.h"
+// Copyright (c) 2011-2013 The Bitcoin developers
+// Distributed under the MIT/X11 software license, see the accompanying
+// file COPYING or http://www.opensource.org/licenses/mit-license.php.
 #include "rpcconsole.h"
+#include "ui_rpcconsole.h"
 #include "clientmodel.h"
 #include "bitcoinrpc.h"
 #include "guiutil.h"
 
 #include <QTime>
-#include <QTimer>
 #include <QThread>
-#include <QTextEdit>
 #include <QKeyEvent>
-#include <QScrollBar>
 #if QT_VERSION < 0x050000
 #include <QUrl>
 #endif
+#include <QScrollBar>
 
 #include <openssl/crypto.h>
 
+// TODO: add a scrollback limit, as there is currently none
 // TODO: make it possible to filter out categories (esp debug messages when implemented)
 // TODO: receive errors and debug messages through ClientModel
 
-const int CONSOLE_SCROLLBACK = 50;
 const int CONSOLE_HISTORY = 50;
 
 const QSize ICON_SIZE(24, 24);
@@ -35,7 +36,8 @@ const struct {
     {NULL, NULL}
 };
 
-// Object for executing console RPC commands in a separate thread.
+/* Object for executing console RPC commands in a separate thread.
+*/
 class RPCExecutor: public QObject
 {
     Q_OBJECT
@@ -55,19 +57,21 @@ void RPCExecutor::start()
    // Nothing to do
 }
 
-// Split shell command line into a list of arguments. Aims to emulate \c bash and friends.
-//
-// - Arguments are delimited with whitespace
-// - Extra whitespace at the beginning and end and between arguments will be ignored
-// - Text can be "double" or 'single' quoted
-// - The backslash \c \ is used as escape character
-//   - Outside quotes, any character can be escaped
-//   - Within double quotes, only escape \c " and backslashes before a \c " or another backslash
-//   - Within single quotes, no escaping is possible and no special interpretation takes place
-//
-// args        Parsed arguments will be appended to this list
-// strCommand  Command line to split
-//
+/**
+ * Split shell command line into a list of arguments. Aims to emulate \c bash and friends.
+ *
+ * - Arguments are delimited with whitespace
+ * - Extra whitespace at the beginning and end and between arguments will be ignored
+ * - Text can be "double" or 'single' quoted
+ * - The backslash \c \ is used as escape character
+ *   - Outside quotes, any character can be escaped
+ *   - Within double quotes, only escape \c " and backslashes before a \c " or another backslash
+ *   - Within single quotes, no escaping is possible and no special interpretation takes place
+ *
+ * @param[out]   args        Parsed arguments will be appended to this list
+ * @param[in]    strCommand  Command line to split
+ */
+
 bool parseCommandLine(std::vector<std::string> &args, const std::string &strCommand)
 {
     enum CmdParseState
@@ -79,9 +83,9 @@ bool parseCommandLine(std::vector<std::string> &args, const std::string &strComm
         STATE_ESCAPE_OUTER,
         STATE_ESCAPE_DOUBLEQUOTED
     } state = STATE_EATING_SPACES;
-    
+
     std::string curarg;
-        
+
     foreach (char ch, strCommand)
     {
         switch (state)
@@ -152,7 +156,7 @@ bool parseCommandLine(std::vector<std::string> &args, const std::string &strComm
                break;
         }
     }
-    switch (state)
+    switch(state) // final state
     {
       case STATE_EATING_SPACES:
            return true;
@@ -175,9 +179,7 @@ void RPCExecutor::request(const QString &command)
         return;
     }
     if (args.empty())
-    {
-        return;
-    }
+        return; // Nothing to do
     try
     {
         std::string strPrint;
@@ -189,25 +191,18 @@ void RPCExecutor::request(const QString &command)
 
         // Format result reply
         if (result.type() == json_spirit::null_type)
-        {
             strPrint = "";
-        }
         else if (result.type() == json_spirit::str_type)
-        {
             strPrint = result.get_str();
-        }
         else
-        {
             strPrint = write_string(result, true);
-        }
 
         emit reply(RPCConsole::CMD_REPLY, QString::fromStdString(strPrint));
     }
     catch (json_spirit::Object& objError)
     {
-        try 
+        try // Nice formatting for standard-format error
         {
-            // Nice formatting for standard-format error
             int code = find_value(objError, "code").get_int();
             std::string message = find_value(objError, "message").get_str();
             emit reply(RPCConsole::CMD_ERROR, QString::fromStdString(message) + " (code " + QString::number(code) + ")");
@@ -229,6 +224,7 @@ void RPCExecutor::request(const QString &command)
 RPCConsole::RPCConsole(QWidget *parent) :
     QDialog(parent),
     ui(new Ui::RPCConsole),
+    clientModel(0),
     historyPtr(0)
 {
     ui->setupUi(this);
@@ -261,7 +257,6 @@ RPCConsole::~RPCConsole()
 
 bool RPCConsole::eventFilter(QObject* obj, QEvent *event)
 {
-    // Special key handling
     if(event->type() == QEvent::KeyPress)
     {
         QKeyEvent *keyevt = static_cast<QKeyEvent*>(event);
@@ -351,6 +346,8 @@ static QString categoryClass(int category)
 void RPCConsole::clear()
 {
     ui->messagesWidget->clear();
+    history.clear();
+    historyPtr = 0;
     ui->lineEdit->clear();
     ui->lineEdit->setFocus();
 
@@ -388,13 +385,9 @@ void RPCConsole::message(int category, const QString &message, bool html)
     out += "<td class=\"icon\" width=\"32\"><img src=\"" + categoryClass(category) + "\"></td>";
     out += "<td class=\"message " + categoryClass(category) + "\" valign=\"middle\">";
     if (html)
-    {
         out += message;
-    }
     else
-    {
         out += GUIUtil::HtmlEscape(message, true);
-    }
     out += "</td></tr></table>";
     ui->messagesWidget->append(out);
 }
@@ -409,13 +402,10 @@ void RPCConsole::setNumConnections(int count)
 void RPCConsole::setNumBlocks(int count, int countOfPeers)
 {
     ui->numberOfBlocks->setText(QString::number(count));
+    // If there is no current countOfPeers available display N/A instead of 0, which can't ever be true
     ui->totalBlocks->setText(countOfPeers == 0 ? tr("N/A") : QString::number(countOfPeers));
     if (clientModel)
-    {
-        // If there is no current number available display N/A instead of 0, which can't ever be true
-        ui->totalBlocks->setText(clientModel->getNumBlocksOfPeers() == 0 ? tr("N/A") : QString::number(clientModel->getNumBlocksOfPeers()));
         ui->lastBlockTime->setText(clientModel->getLastBlockDate().toString());
-    }
 }
 
 
@@ -434,9 +424,7 @@ void RPCConsole::on_lineEdit_returnPressed()
         history.append(cmd);
         // Enforce maximum history size
         while (history.size() > CONSOLE_HISTORY)
-        {
             history.removeFirst();
-        }
         // Set pointer to end of history
         historyPtr = history.size();
         // Scroll console view to end
@@ -449,18 +437,12 @@ void RPCConsole::browseHistory(int offset)
 {
     historyPtr += offset;
     if (historyPtr < 0) 
-    {
         historyPtr = 0;
-    }
     if (historyPtr > history.size())
-    {
         historyPtr = history.size();
-    }
     QString cmd;
     if (historyPtr < history.size())
-    {
         cmd = history.at(historyPtr);
-    }
     ui->lineEdit->setText(cmd);
 }
 

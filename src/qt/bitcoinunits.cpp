@@ -1,3 +1,7 @@
+// Copyright (c) 2011-2013 The Bitcoin developers
+// Distributed under the MIT/X11 software license, see the accompanying
+// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+
 #include "bitcoinunits.h"
 
 #include <QStringList>
@@ -134,18 +138,12 @@ QString BitcoinUnits::format(int unit, qint64 n, bool fPlus)
     // Right-trim excess zeros after the decimal point
     int nTrim = 0;
     for (int i = remainder_str.size() - 1; i >= 2 && (remainder_str.at(i) == '0'); --i)
-    {
         ++nTrim;
-    }
     remainder_str.chop(nTrim);
     if (n < 0)
-    {
         quotient_str.insert(0, '-');
-    }
     else if (fPlus && n > 0)
-    {
         quotient_str.insert(0, '+');
-    }
     return quotient_str + QString(".") + remainder_str;
 }
 
@@ -159,9 +157,7 @@ QString BitcoinUnits::formatWithUnit(int unit, qint64 amount, bool plussign)
 bool BitcoinUnits::parse(int unit, const QString &value, qint64 *val_out)
 {
     if (!valid(unit) || value.isEmpty())
-    {
         return false; // Refuse to parse invalid unit or empty string
-    }
     int num_decimals = decimals(unit);
     QStringList parts = value.split(".");
 
@@ -176,7 +172,6 @@ bool BitcoinUnits::parse(int unit, const QString &value, qint64 *val_out)
     {
         decimals = parts[1];
     }
-    
     if (decimals.size() > num_decimals)
     {
         return false; // Exceeds max precision
@@ -188,7 +183,6 @@ bool BitcoinUnits::parse(int unit, const QString &value, qint64 *val_out)
     {
         return false; // Longer numbers will exceed 63 bits
     }
-    
     qint64 retvalue = str.toLongLong(&ok);
     if (val_out)
     {

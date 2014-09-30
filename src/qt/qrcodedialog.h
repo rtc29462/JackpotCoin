@@ -37,7 +37,6 @@ private:
     
     void genCode();
     QString getURI();
-    
 };
 
 #endif // QRCODEDIALOG_H

@@ -1,3 +1,7 @@
+// Copyright (c) 2011-2013 The Bitcoin developers
+// Distributed under the MIT/X11 software license, see the accompanying
+// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+
 #include "optionsmodel.h"
 #include "bitcoinunits.h"
 #include "init.h"
@@ -24,20 +28,13 @@ bool static ApplyProxySettings()
         return false;
     }
     if (nSocksVersion && !addrProxy.IsValid())
-    {
         return false;
-    }
     if (!IsLimited(NET_IPV4))
-    {
         SetProxy(NET_IPV4, addrProxy, nSocksVersion);
-    }
-    if (nSocksVersion > 4) 
-    {
+    if (nSocksVersion > 4) {
 #ifdef USE_IPV6
         if (!IsLimited(NET_IPV6)) 
-        {
             SetProxy(NET_IPV6, addrProxy, nSocksVersion);
-        }
 #endif
         SetNameProxy(addrProxy, nSocksVersion);
     }
@@ -51,12 +48,12 @@ void OptionsModel::Init()
 
     // These are Qt-only settings:
     nDisplayUnit = settings.value("nDisplayUnit", BitcoinUnits::BTC).toInt();
-    fDisplayAddresses = settings.value("fDisplayAddresses", false).toBool();
+    bDisplayAddresses = settings.value("bDisplayAddresses", false).toBool();
     fMinimizeToTray = settings.value("fMinimizeToTray", false).toBool();
     fMinimizeOnClose = settings.value("fMinimizeOnClose", false).toBool();
-	fCoinControlFeatures = settings.value("fCoinControlFeatures", false).toBool();
     nTransactionFee = settings.value("nTransactionFee").toLongLong();
     language = settings.value("language", "").toString();
+	fCoinControlFeatures = settings.value("fCoinControlFeatures", false).toBool();
     nReserveBalance = settings.value("nReserveBalance").toLongLong();
     fHideNotification = settings.value("fHideNotification", false).toBool();
     fHideInvalid = settings.value("fHideInvalid", true).toBool();
@@ -64,37 +61,39 @@ void OptionsModel::Init()
     // These are shared with core Bitcoin; we want
     // command-line options to override the GUI settings:
     if (settings.contains("fUseUPnP"))
-    {
         SoftSetBoolArg("-upnp", settings.value("fUseUPnP").toBool());
-    }
     if (settings.contains("addrProxy") && settings.value("fUseProxy").toBool())
-    {
         SoftSetArg("-proxy", settings.value("addrProxy").toString().toStdString());
-    }
     if (settings.contains("nSocksVersion") && settings.value("fUseProxy").toBool())
-    {
         SoftSetArg("-socks", settings.value("nSocksVersion").toString().toStdString());
-    }
-    if (settings.contains("detachDB"))
-    {
-        SoftSetBoolArg("-detachdb", settings.value("detachDB").toBool());
-    }
     if (!language.isEmpty())
-    {
         SoftSetArg("-lang", language.toStdString());
-    }
 }
 
+void OptionsModel::Reset()
+{
+    QSettings settings;
+
+    // Remove all entries in this QSettings object
+    settings.clear();
+
+    // default setting for OptionsModel::StartAtStartup - disabled
+    if (GUIUtil::GetStartOnSystemStartup())
+        GUIUtil::SetStartOnSystemStartup(false);
+
+    // Re-Init to get default values
+    Init();
+
+    // Ensure Upgrade() is not running again by setting the bImportFinished flag
+    settings.setValue("bImportFinished", true);
+}
 
 bool OptionsModel::Upgrade()
 {
     QSettings settings;
 
     if (settings.contains("bImportFinished"))
-    {
-        // Already upgraded
-        return false;
-    }
+        return false; // Already upgraded
 
     settings.setValue("bImportFinished", true);
 
@@ -113,7 +112,7 @@ bool OptionsModel::Upgrade()
         }
     }
     QList<QString> boolOptions;
-    boolOptions << "fDisplayAddresses" << "fMinimizeToTray" << "fMinimizeOnClose" << "fUseProxy" << "fUseUPnP" << "fHideNotification" << "fHideInvalid";
+    boolOptions << "bDisplayAddresses" << "fMinimizeToTray" << "fMinimizeOnClose" << "fUseProxy" << "fUseUPnP" << "fHideNotification" << "fHideInvalid";
     foreach(QString key, boolOptions)
     {
         bool value = false;
@@ -174,44 +173,39 @@ QVariant OptionsModel::data(const QModelIndex & index, int role) const
 #endif
           case MinimizeOnClose:
                return QVariant(fMinimizeOnClose);
-          case ProxyUse:
-               return settings.value("fUseProxy", false);
-          case ProxyIP: 
-          {
+          case ProxyUse: {
                proxyType proxy;
-               if (GetProxy(NET_IPV4, proxy))
-               {
-                   return QVariant(QString::fromStdString(proxy.first.ToStringIP()));
-               }
-               else
-               {
-                   return QVariant(QString::fromStdString("127.0.0.1"));
-               }
+               return QVariant(GetProxy(NET_IPV4, proxy));
           }
-          case ProxyPort: 
-          {
+          case ProxyIP: {
+               proxyType proxy;
+              if (GetProxy(NET_IPV4, proxy))
+                  return QVariant(QString::fromStdString(proxy.first.ToStringIP()));
+              else
+                  return QVariant(QString::fromStdString("127.0.0.1"));
+          } 
+          case ProxyPort: {
                proxyType proxy;
                if (GetProxy(NET_IPV4, proxy))
-               {
                    return QVariant(proxy.first.GetPort());
-               }
                else
-               {
-                  return QVariant(9050);
-               }
+                   return QVariant(9050);
           }
-          case ProxySocksVersion:
-               return settings.value("nSocksVersion", 5);
+          case ProxySocksVersion: {
+               proxyType proxy;
+               if (GetProxy(NET_IPV4, proxy))
+                   return QVariant(proxy.second);
+               else
+                   return QVariant(5);
+          }
           case Fee:
-               return QVariant((qint64) nTransactionFee);
+               return QVariant(nTransactionFee);
           case ReserveBalance:
                return QVariant((qint64) nReserveBalance);
           case DisplayUnit:
                return QVariant(nDisplayUnit);
           case DisplayAddresses:
-               return QVariant(fDisplayAddresses);
-          case DetachDatabases:
-               return QVariant(bitdb.GetDetach());
+               return QVariant(bDisplayAddresses);
           case Language:
                return settings.value("language", "");
 		  case CoinControlFeatures:
@@ -244,9 +238,8 @@ bool OptionsModel::setData(const QModelIndex & index, const QVariant & value, in
                settings.setValue("fMinimizeToTray", fMinimizeToTray);
                break;
           case MapPortUPnP:
-               fUseUPnP = value.toBool();
-               settings.setValue("fUseUPnP", fUseUPnP);
-               MapPort();
+               settings.setValue("fUseUPnP", value.toBool());
+               MapPort(value.toBool());
                break;
           case MinimizeOnClose:
                fMinimizeOnClose = value.toBool();
@@ -254,10 +247,9 @@ bool OptionsModel::setData(const QModelIndex & index, const QVariant & value, in
                break;
           case ProxyUse:
                settings.setValue("fUseProxy", value.toBool());
-               ApplyProxySettings();
+               successful = ApplyProxySettings();
                break;
-          case ProxyIP: 
-          {
+          case ProxyIP: {
                proxyType proxy;
                proxy.first = CService("127.0.0.1", 9050);
                GetProxy(NET_IPV4, proxy);
@@ -267,8 +259,7 @@ bool OptionsModel::setData(const QModelIndex & index, const QVariant & value, in
                successful = ApplyProxySettings();
           }
                break;
-          case ProxyPort: 
-          {
+          case ProxyPort: {
                proxyType proxy;
                proxy.first = CService("127.0.0.1", 9050);
                GetProxy(NET_IPV4, proxy);
@@ -277,8 +268,7 @@ bool OptionsModel::setData(const QModelIndex & index, const QVariant & value, in
                successful = ApplyProxySettings();
           }
                break;
-          case ProxySocksVersion: 
-          {
+          case ProxySocksVersion: {
                proxyType proxy;
                proxy.second = 5;
                GetProxy(NET_IPV4, proxy);
@@ -289,7 +279,7 @@ bool OptionsModel::setData(const QModelIndex & index, const QVariant & value, in
                break;
           case Fee:
                nTransactionFee = value.toLongLong();
-               settings.setValue("nTransactionFee", (qint64) nTransactionFee);
+               settings.setValue("nTransactionFee", nTransactionFee);
 			   emit transactionFeeChanged(nTransactionFee);
                break;
           case ReserveBalance:
@@ -303,37 +293,26 @@ bool OptionsModel::setData(const QModelIndex & index, const QVariant & value, in
                emit displayUnitChanged(nDisplayUnit);
                break;
           case DisplayAddresses:
-               fDisplayAddresses = value.toBool();
-               settings.setValue("fDisplayAddresses", fDisplayAddresses);
-               break;
-          case DetachDatabases: 
-          {
-               bool fDetachDB = value.toBool();
-               bitdb.SetDetach(fDetachDB);
-               settings.setValue("detachDB", fDetachDB);
-          }
+               bDisplayAddresses = value.toBool();
+               settings.setValue("bDisplayAddresses", bDisplayAddresses);
                break;
           case Language:
                settings.setValue("language", value);
                break;
-          case CoinControlFeatures: 
-          {
+          case CoinControlFeatures:
                fCoinControlFeatures = value.toBool();
                settings.setValue("fCoinControlFeatures", fCoinControlFeatures);
                emit coinControlFeaturesChanged(fCoinControlFeatures);
-          }
                break;
           case HideNotification:
-          {
                fHideNotification = value.toBool();
                settings.setValue("fHideNotification", fHideNotification);
-          }
+               emit hideNotificationChanged(fHideNotification);
                break;
           case HideInvalid:
-          {
                fHideInvalid = value.toBool();
                settings.setValue("fHideInvalid", fHideInvalid);
-          }
+               emit hideInvalidChanged(fHideInvalid);
                break;
           default:
                break;
@@ -383,7 +362,7 @@ int OptionsModel::getDisplayUnit()
 
 bool OptionsModel::getDisplayAddresses()
 {
-    return fDisplayAddresses;
+    return bDisplayAddresses;
 }
 
 
