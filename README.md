@@ -2,7 +2,7 @@ JackpotCoin (JACKPOT)
 
 - PoW/PoS independent
 - 3 transaction confirmations - average less than 1 min confirmation
-- 70 minted block confirmations
+- 60 minted block confirmations
 - Total coins will be approximately 30 billions.
 
 PoW:
