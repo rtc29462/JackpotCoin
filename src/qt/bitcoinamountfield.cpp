@@ -1,18 +1,18 @@
+// Copyright (c) 2011-2013 The Bitcoin developers
+// Distributed under the MIT/X11 software license, see the accompanying
+// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+
 #include "bitcoinamountfield.h"
 #include "qvaluecombobox.h"
 #include "bitcoinunits.h"
 
 #include "guiconstants.h"
 
-#include <QLabel>
-#include <QLineEdit>
-#include <QRegExpValidator>
 #include <QHBoxLayout>
 #include <QKeyEvent>
 #include <QDoubleSpinBox>
-#include <QComboBox>
 #include <QApplication>
-#include <qmath.h>
+#include <qmath.h> // for qPow()
 
 BitcoinAmountField::BitcoinAmountField(QWidget *parent):
         QWidget(parent), amount(0), currentUnit(-1)
@@ -49,13 +49,9 @@ BitcoinAmountField::BitcoinAmountField(QWidget *parent):
 void BitcoinAmountField::setText(const QString &text)
 {
     if (text.isEmpty())
-    {
         amount->clear();
-    }
     else
-    {
         amount->setValue(text.toDouble());
-    }
 }
 
 
@@ -70,13 +66,9 @@ bool BitcoinAmountField::validate()
 {
     bool valid = true;
     if (amount->value() == 0.0)
-    {
         valid = false;
-    }
     if (valid && !BitcoinUnits::parse(currentUnit, text(), 0))
-    {
         valid = false;
-    }
     setValid(valid);
     return valid;
 }
@@ -85,26 +77,18 @@ bool BitcoinAmountField::validate()
 void BitcoinAmountField::setValid(bool valid)
 {
     if (valid)
-    {
         amount->setStyleSheet("");
-    }
     else
-    {
         amount->setStyleSheet(STYLE_INVALID);
-    }
 }
 
 
 QString BitcoinAmountField::text() const
 {
     if (amount->text().isEmpty())
-    {
         return QString();
-    }
     else
-    {
         return amount->text();
-    }
 }
 
 
@@ -122,7 +106,7 @@ bool BitcoinAmountField::eventFilter(QObject *object, QEvent *event)
         {
             // Translate a comma into a period
             QKeyEvent periodKeyEvent(event->type(), Qt::Key_Period, keyEvent->modifiers(), ".", keyEvent->isAutoRepeat(), keyEvent->count());
-            qApp->sendEvent(object, &periodKeyEvent);
+            QApplication::sendEvent(object, &periodKeyEvent);
             return true;
         }
     }
@@ -172,6 +156,11 @@ void BitcoinAmountField::unitChanged(int idx)
     // Set max length after retrieving the value, to prevent truncation
     amount->setDecimals(BitcoinUnits::decimals(currentUnit));
     amount->setMaximum(qPow(10, BitcoinUnits::amountDigits(currentUnit)) - qPow(10, -amount->decimals()));
+
+    if(currentUnit == BitcoinUnits::uBTC)
+        amount->setSingleStep(0.01);
+    else
+        amount->setSingleStep(0.001);
 
     if (valid)
     {

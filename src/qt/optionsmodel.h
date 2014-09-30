@@ -1,14 +1,18 @@
+// Copyright (c) 2011-2013 The Bitcoin developers
+// Distributed under the MIT/X11 software license, see the accompanying
+// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+
 #ifndef OPTIONSMODEL_H
 #define OPTIONSMODEL_H
 
 #include <QAbstractListModel>
 
-// Interface from Qt to configuration data structure for Bitcoin client.
-// To Qt, the options are presented as a list with the different options
-// laid out vertically.
-// This can be changed to a tree once the settings become sufficiently
-// complex.
-
+/** Interface from Qt to configuration data structure for Bitcoin client.
+   To Qt, the options are presented as a list with the different options
+   laid out vertically.
+   This can be changed to a tree once the settings become sufficiently
+   complex.
+ */
 class OptionsModel : public QAbstractListModel
 {
     Q_OBJECT
@@ -28,7 +32,6 @@ public:
         Fee,                 // qint64
         DisplayUnit,         // BitcoinUnits::Unit
         DisplayAddresses,    // bool
-        DetachDatabases,     // bool
         Language,            // QString
 		CoinControlFeatures, // bool
         ReserveBalance,      // qint64
@@ -38,6 +41,7 @@ public:
     };
 
     void Init();
+    void Reset();
 
     // Migrate settings from wallet.dat after app initialization
     // returns true if settings upgraded
@@ -47,7 +51,7 @@ public:
     QVariant data(const QModelIndex & index, int role = Qt::DisplayRole) const;
     bool setData(const QModelIndex & index, const QVariant & value, int role = Qt::EditRole);
 
-    // Explicit getters
+    /* Explicit getters */
     qint64 getTransactionFee();
     qint64 getReserveBalance();
     bool getMinimizeToTray();
@@ -61,19 +65,21 @@ public:
 
 private:
     int nDisplayUnit;
-    bool fDisplayAddresses;
+    bool bDisplayAddresses;
     bool fMinimizeToTray;
     bool fMinimizeOnClose;
     bool fHideNotification;
     bool fHideInvalid;
-	bool fCoinControlFeatures;
     QString language;
+    bool fCoinControlFeatures;
 
 signals:
     void displayUnitChanged(int unit);
 	void transactionFeeChanged(qint64);
     void coinControlFeaturesChanged(bool);
     void reserveBalanceChanged(qint64);
+    void hideNotificationChanged(bool);
+    void hideInvalidChanged(bool);
     
 };
 

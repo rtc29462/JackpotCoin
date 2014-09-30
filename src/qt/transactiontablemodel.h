@@ -1,3 +1,7 @@
+// Copyright (c) 2011-2013 The Bitcoin developers
+// Distributed under the MIT/X11 software license, see the accompanying
+// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+
 #ifndef TRANSACTIONTABLEMODEL_H
 #define TRANSACTIONTABLEMODEL_H
 
@@ -9,7 +13,8 @@ class TransactionTablePriv;
 class TransactionRecord;
 class WalletModel;
 
-// UI model for the transaction table of a wallet.
+/** UI model for the transaction table of a wallet.
+ */
 class TransactionTableModel : public QAbstractTableModel
 {
     Q_OBJECT
@@ -26,24 +31,25 @@ public:
         Amount = 4
     };
 
-    // Roles to get specific information from a transaction row.
-    // These are independent of column.
+    /** Roles to get specific information from a transaction row.
+        These are independent of column.
+    */
     enum RoleIndex {
-        // Type of transaction
+        /** Type of transaction */
         TypeRole = Qt::UserRole,
-        // Date and time this transaction was created
+        /** Date and time this transaction was created */
         DateRole,
-        // Long description (HTML format)
+        /** Long description (HTML format) */
         LongDescriptionRole,
-        // Address of transaction
+        /** Address of transaction */
         AddressRole,
-        // Label of address related to transaction
+        /** Label of address related to transaction */
         LabelRole,
-        // Net amount of transaction
+        /** Net amount of transaction */
         AmountRole,
-        // Unique identifier
+        /** Unique identifier */
         TxIDRole,
-        // Is transaction confirmed?
+        /** Is transaction confirmed? */
         ConfirmedRole,
         // Depth of confirm
         ConfirmedDepth,
@@ -83,8 +89,7 @@ public slots:
     void updateDisplayUnit();
 
     friend class TransactionTablePriv;
-    
 };
 
-#endif
+#endif // TRANSACTIONTABLEMODEL_H
 
