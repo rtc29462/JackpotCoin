@@ -13,6 +13,7 @@ public:
     
 protected:
    virtual void  keyPressEvent(QKeyEvent *event);
+   
 };
 
 #endif // COINCONTROLTREEWIDGET_H

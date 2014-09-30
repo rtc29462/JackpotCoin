@@ -1,7 +1,3 @@
-// Copyright (c) 2011-2013 The Bitcoin developers
-// Distributed under the MIT/X11 software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
 #ifndef CLIENTMODEL_H
 #define CLIENTMODEL_H
 
@@ -17,14 +13,7 @@ class QDateTime;
 class QTimer;
 QT_END_NAMESPACE
 
-enum BlockSource {
-    BLOCK_SOURCE_NONE,
-    BLOCK_SOURCE_REINDEX,
-    BLOCK_SOURCE_DISK,
-    BLOCK_SOURCE_NETWORK
-};
-
-/** Model for Bitcoin network client. */
+// Model for Bitcoin network client.
 class ClientModel : public QObject
 {
     Q_OBJECT
@@ -39,23 +28,19 @@ public:
     int getNumBlocks() const;
     int getNumBlocksAtStartup();
 
-    double getVerificationProgress() const;
     QDateTime getLastBlockDate() const;
 
-    //! Return true if client connected to testnet
+    // Return true if client connected to testnet
     bool isTestNet() const;
-    //! Return true if core is doing initial block download
+    // Return true if core is doing initial block download
     bool inInitialBlockDownload() const;
-    //! Return true if core is importing blocks
-    enum BlockSource getBlockSource() const;
-    //! Return conservative estimate of total number of blocks, or 0 if unknown
+    // Return conservative estimate of total number of blocks, or 0 if unknown
     int getNumBlocksOfPeers() const;
-    //! Return warnings to be displayed in status bar
+    // Return warnings to be displayed in status bar
     QString getStatusBarWarnings() const;
 
     QString formatFullVersion() const;
     QString formatBuildDate() const;
-    bool isReleaseVersion() const;
     QString clientName() const;
     QString formatClientStartupTime() const;
 	double GetDifficulty() const;
@@ -65,11 +50,8 @@ private:
 
     int cachedNumBlocks;
     int cachedNumBlocksOfPeers;
-	bool cachedReindexing;
-	bool cachedImporting;
 
     int numBlocksAtStartup;
-    int numTimer;
 
     QTimer *pollTimer;
 
@@ -79,20 +61,15 @@ private:
 signals:
     void numConnectionsChanged(int count);
     void numBlocksChanged(int count, int countOfPeers);
-    void alertsChanged(const QString &warnings);
-    void warningChanged(const QString &warnings);
-    void timerEvent();
-    void timerEvent_slow();
 
-    //! Asynchronous message notification
-    void message(const QString &title, const QString &message, unsigned int style);
+    // Asynchronous error notification
+    void error(const QString &title, const QString &message, bool modal);
 
 public slots:
     void updateTimer();
     void updateNumConnections(int numConnections);
     void updateAlert(const QString &hash, int status);
-    void updateWarning(const QString &warning);
-
+    
 };
 
 #endif // CLIENTMODEL_H

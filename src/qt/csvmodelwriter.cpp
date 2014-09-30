@@ -1,7 +1,3 @@
-// Copyright (c) 2011-2013 The Bitcoin developers
-// Distributed under the MIT/X11 software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
 #include "csvmodelwriter.h"
 
 #include <QAbstractItemModel>
@@ -55,7 +51,9 @@ bool CSVModelWriter::write()
 {
     QFile file(filename);
     if (!file.open(QIODevice::WriteOnly | QIODevice::Text))
+    {
         return false;
+    }
     QTextStream out(&file);
 
     int numRows = 0;
@@ -92,6 +90,6 @@ bool CSVModelWriter::write()
     
     file.close();
 
-    return file.error() == QFile::NoError;
+    return (file.error() == QFile::NoError);
 }
 

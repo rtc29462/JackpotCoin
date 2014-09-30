@@ -1,20 +1,14 @@
-// Copyright (c) 2011-2013 The Bitcoin developers
-// Distributed under the MIT/X11 software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
 #ifndef TRANSACTIONRECORD_H
 #define TRANSACTIONRECORD_H
 
 #include "uint256.h"
-#include "main.h"
 
 #include <QList>
 
 class CWallet;
 class CWalletTx;
 
-/** UI model for transaction status. The transaction status is the part of a transaction that will change over time.
- */
+// UI model for transaction status. The transaction status is the part of a transaction that will change over time.
 class TransactionStatus
 {
 public:
@@ -53,9 +47,8 @@ public:
     
 };
 
-/** UI model for a transaction. A core transaction can be represented by multiple UI transactions if it has
-    multiple outputs.
- */
+// UI model for a transaction. A core transaction can be represented by multiple UI transactions if it has
+// multiple outputs.
 class TransactionRecord
 {
 public:
@@ -70,6 +63,9 @@ public:
         SendToSelf,
         StakeMint
     };
+
+    // Number of confirmation recommended for accepting a transaction
+    static const int RecommendedNumConfirmations = 3;
 
     TransactionRecord():
             hash(), time(0), type(Other), address(""), debit(0), credit(0), idx(0)
@@ -90,36 +86,27 @@ public:
     {
     }
 
-    /** Decompose CWallet transaction to model transaction records.
-     */
+    // Decompose CWallet transaction to model transaction records.
     static bool showTransaction(const CWalletTx &wtx);
     static QList<TransactionRecord> decomposeTransaction(const CWallet *wallet, const CWalletTx &wtx);
 
-    /** @name Immutable transaction attributes
-      @{*/
+    // name Immutable transaction attributes
     uint256 hash;
-    int64 time;
+    qint64 time;
     Type type;
     std::string address;
-    int64 debit;
-    int64 credit;
-    /**@}*/
+    qint64 debit;
+    qint64 credit;
 
-    /** Subtransaction index, for sort key */
+    // Subtransaction index, for sort key
     int idx;
-
-    /** Status: can change with block chain update */
+    // Status: can change with block chain update
     TransactionStatus status;
-
-    /** Return the unique identifier for this transaction (part) */
+    // Return the unique identifier for this transaction (part)
     std::string getTxID();
-
-    /** Update status from core wallet tx.
-     */
+    // Update status from core wallet tx.
     void updateStatus(const CWalletTx &wtx);
-
-    /** Return whether a status update is needed.
-     */
+    // Return whether a status update is needed.
     bool statusUpdateNeeded();
 
 };

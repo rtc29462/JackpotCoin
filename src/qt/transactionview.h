@@ -1,7 +1,3 @@
-// Copyright (c) 2011-2013 The Bitcoin developers
-// Distributed under the MIT/X11 software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
 #ifndef TRANSACTIONVIEW_H
 #define TRANSACTIONVIEW_H
 
@@ -20,9 +16,8 @@ class QFrame;
 class QDateTimeEdit;
 QT_END_NAMESPACE
 
-/** Widget showing the transaction list for a wallet, including a filter row.
-    Using the filter row, the user can view or export a subset of the transactions.
-  */
+// Widget showing the transaction list for a wallet, including a filter row.
+// Using the filter row, the user can view or export a subset of the transactions.
 class TransactionView : public QWidget
 {
     Q_OBJECT

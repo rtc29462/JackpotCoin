@@ -17,22 +17,26 @@ class CAddress;
 class CAddrMan;
 class CBlockLocator;
 class CDiskBlockIndex;
+class CDiskTxPos;
 class CMasterKey;
 class COutPoint;
+class CTxIndex;
 class CWallet;
 class CWalletTx;
 
 extern unsigned int nWalletDBUpdated;
 
-void ThreadFlushWalletDB(const std::string& strWalletFile);
+void ThreadFlushWalletDB(void* parg);
 bool BackupWallet(const CWallet& wallet, const std::string& strDest);
 
 class CDBEnv
 {
 private:
+    bool fDetachDB;
     bool fDbEnvInit;
     bool fMockDb;
-    boost::filesystem::path path;
+    boost::filesystem::path pathEnv;
+    std::string strPath;
 
     void EnvShutdown();
 
@@ -45,7 +49,7 @@ public:
     CDBEnv();
     ~CDBEnv();
     void MakeMock();
-    bool IsMock() { return fMockDb; }
+    bool IsMock() { return fMockDb; };
 
     /*
      * Verify that database file strFile is OK. If it is not,
@@ -65,15 +69,17 @@ public:
     typedef std::pair<std::vector<unsigned char>, std::vector<unsigned char> > KeyValPair;
     bool Salvage(std::string strFile, bool fAggressive, std::vector<KeyValPair>& vResult);
 
-    bool Open(const boost::filesystem::path &path);
+    bool Open(boost::filesystem::path pathEnv_);
     void Close();
     void Flush(bool fShutdown);
     void CheckpointLSN(std::string strFile);
+    void SetDetach(bool fDetachDB_) { fDetachDB = fDetachDB_; }
+    bool GetDetach() { return fDetachDB; }
 
     void CloseDb(const std::string& strFile);
     bool RemoveDb(const std::string& strFile);
 
-    DbTxn *TxnBegin(int flags = DB_TXN_WRITE_NOSYNC)
+    DbTxn *TxnBegin(int flags=DB_TXN_WRITE_NOSYNC)
     {
         DbTxn* ptxn = NULL;
         int ret = dbenv.txn_begin(NULL, &ptxn, flags);
@@ -97,11 +103,8 @@ protected:
 
     explicit CDB(const char* pszFile, const char* pszMode="r+");
     ~CDB() { Close(); }
-
 public:
-    void Flush();
     void Close();
-
 private:
     CDB(const CDB&);
     void operator=(const CDB&);
@@ -306,6 +309,47 @@ public:
 
     bool static Rewrite(const std::string& strFile, const char* pszSkip = NULL);
 };
+
+
+
+
+
+
+
+/** Access to the transaction database (blkindex.dat) */
+class CTxDB : public CDB
+{
+public:
+    CTxDB(const char* pszMode="r+") : CDB("blkindex.dat", pszMode) { }
+private:
+    CTxDB(const CTxDB&);
+    void operator=(const CTxDB&);
+public:
+    bool ReadTxIndex(uint256 hash, CTxIndex& txindex);
+    bool UpdateTxIndex(uint256 hash, const CTxIndex& txindex);
+    bool AddTxIndex(const CTransaction& tx, const CDiskTxPos& pos, int nHeight);
+    bool EraseTxIndex(const CTransaction& tx);
+    bool ContainsTx(uint256 hash);
+    bool ReadDiskTx(uint256 hash, CTransaction& tx, CTxIndex& txindex);
+    bool ReadDiskTx(uint256 hash, CTransaction& tx);
+    bool ReadDiskTx(COutPoint outpoint, CTransaction& tx, CTxIndex& txindex);
+    bool ReadDiskTx(COutPoint outpoint, CTransaction& tx);
+    bool WriteBlockIndex(const CDiskBlockIndex& blockindex);
+    bool ReadHashBestChain(uint256& hashBestChain);
+    bool WriteHashBestChain(uint256 hashBestChain);
+    bool ReadBestInvalidTrust(CBigNum& bnBestInvalidTrust);
+    bool WriteBestInvalidTrust(CBigNum bnBestInvalidTrust);
+    bool ReadSyncCheckpoint(uint256& hashCheckpoint);
+    bool WriteSyncCheckpoint(uint256 hashCheckpoint);
+    bool ReadCheckpointPubKey(std::string& strPubKey);
+    bool WriteCheckpointPubKey(const std::string& strPubKey);
+    bool LoadBlockIndex();
+private:
+    bool LoadBlockIndexGuts();
+};
+
+
+
 
 /** Access to the (IP) address database (peers.dat) */
 class CAddrDB
