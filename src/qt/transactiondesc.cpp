@@ -1,3 +1,7 @@
+// Copyright (c) 2011-2014 The Bitcoin developers
+// Distributed under the MIT/X11 software license, see the accompanying
+// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+
 #include "transactiondesc.h"
 #include "guiutil.h"
 #include "bitcoinunits.h"
@@ -7,38 +11,28 @@
 #include "ui_interface.h"
 #include "base58.h"
 
+#include <string>
+
 QString TransactionDesc::FormatTxStatus(const CWalletTx& wtx)
 {
-    if (!wtx.IsFinal())
+    if (!wtx.IsFinal(nBestHeight + 1))
     {
         if (wtx.nLockTime < LOCKTIME_THRESHOLD)
-        {
-            return tr("Open for %n more block(s)", "", (wtx.nLockTime - nBestHeight));
-        }
+            return tr("Open for %n more block(s)", "", wtx.nLockTime - nBestHeight);
         else
-        {
             return tr("Open until %1").arg(GUIUtil::dateTimeStr(wtx.nLockTime));
-        }
     }
     else
     {
         int nDepth = wtx.GetDepthInMainChain();
         if (nDepth < 0)
-        {
             return tr("conflicted");
-        }
-        else if (((GetAdjustedTime() - wtx.nTimeReceived) > (2 * 60)) && (wtx.GetRequestCount() == 0))
-        {
+        else if (GetAdjustedTime() - wtx.nTimeReceived > 2 * 60 && wtx.GetRequestCount() == 0)
             return tr("%1/offline").arg(nDepth);
-        }
         else if (nDepth < 3)
-        {
             return tr("%1/unconfirmed").arg(nDepth);
-        }
         else
-        {
             return tr("%1 confirmations").arg(nDepth);
-        }
     }
 }
 
@@ -57,18 +51,14 @@ QString TransactionDesc::toHTML(CWallet *wallet, CWalletTx &wtx)
         int64 nNet = nCredit - nDebit;
 
         strHTML += "<b>" + tr("Status") + ":</b> " + FormatTxStatus(wtx);
-        
+
         int nRequests = wtx.GetRequestCount();
         if (nRequests != -1)
         {
             if (nRequests == 0)
-            {
                 strHTML += tr(", has not been successfully broadcast yet");
-            }
             else if (nRequests > 0)
-            {
                 strHTML += tr(", broadcast through %n node(s)", "", nRequests);
-            }
         }
         strHTML += "<br>";
         strHTML += "<b>" + tr("Date") + ":</b> " + (nTime ? GUIUtil::dateTimeStr(nTime) : "") + "<br>";
@@ -84,7 +74,7 @@ QString TransactionDesc::toHTML(CWallet *wallet, CWalletTx &wtx)
         {
             strHTML += "<b>" + tr("Source") + ":</b> " + tr("Stake Generated") + "<br>";
         }
-        else if (wtx.mapValue.count("from") && (!wtx.mapValue["from"].empty()))
+        else if (wtx.mapValue.count("from") && !wtx.mapValue["from"].empty())
         {
             // Online transaction
             strHTML += "<b>" + tr("From") + ":</b> " + GUIUtil::HtmlEscape(wtx.mapValue["from"]) + "<br>";
@@ -108,13 +98,9 @@ QString TransactionDesc::toHTML(CWallet *wallet, CWalletTx &wtx)
                                 strHTML += "<b>" + tr("To") + ":</b> ";
                                 strHTML += GUIUtil::HtmlEscape(CBitcoinAddress(address).ToString());
                                 if (!wallet->mapAddressBook[address].empty())
-                                {
                                     strHTML += " (" + tr("own address") + ", " + tr("label") + ": " + GUIUtil::HtmlEscape(wallet->mapAddressBook[address]) + ")";
-                                }
                                 else
-                                {
                                     strHTML += " (" + tr("own address") + ")";
-                                }
                                 strHTML += "<br>";
                             }
                         }
@@ -134,9 +120,7 @@ QString TransactionDesc::toHTML(CWallet *wallet, CWalletTx &wtx)
             strHTML += "<b>" + tr("To") + ":</b> ";
             CTxDestination dest = CBitcoinAddress(strAddress).Get();
             if (wallet->mapAddressBook.count(dest) && (!wallet->mapAddressBook[dest].empty()))
-            {
                 strHTML += GUIUtil::HtmlEscape(wallet->mapAddressBook[dest]) + " ";
-            }
             strHTML += GUIUtil::HtmlEscape(strAddress) + "<br>";
         }
 
@@ -150,18 +134,12 @@ QString TransactionDesc::toHTML(CWallet *wallet, CWalletTx &wtx)
             //
             int64 nUnmatured = 0;
             BOOST_FOREACH (const CTxOut& txout, wtx.vout)
-            {
                 nUnmatured += wallet->GetCredit(txout);
-            }
             strHTML += "<b>" + tr("Credit") + ":</b> ";
             if (wtx.IsInMainChain())
-            {
                 strHTML += BitcoinUnits::formatWithUnit(BitcoinUnits::BTC, nUnmatured)+ " (" + tr("matures in %n more block(s)", "", wtx.GetBlocksToMaturity()) + ")";
-            }
             else
-            {
                 strHTML += "(" + tr("not accepted") + ")";
-            }
             strHTML += "<br>";
         }
         else if (nNet > 0)
@@ -193,10 +171,9 @@ QString TransactionDesc::toHTML(CWallet *wallet, CWalletTx &wtx)
                 BOOST_FOREACH (const CTxOut& txout, wtx.vout)
                 {
                     if (wallet->IsMine(txout))
-                    {
                         continue;
-                    }
-                    if ((!wtx.mapValue.count("to")) || wtx.mapValue["to"].empty())
+
+                    if (!wtx.mapValue.count("to") || wtx.mapValue["to"].empty())
                     {
                         // Offline transaction
                         CTxDestination address;
@@ -204,9 +181,7 @@ QString TransactionDesc::toHTML(CWallet *wallet, CWalletTx &wtx)
                         {
                             strHTML += "<b>" + tr("To") + ":</b> ";
                             if (wallet->mapAddressBook.count(address) && !wallet->mapAddressBook[address].empty())
-                            {
                                 strHTML += GUIUtil::HtmlEscape(wallet->mapAddressBook[address]) + " ";
-                            }
                             strHTML += GUIUtil::HtmlEscape(CBitcoinAddress(address).ToString());
                             strHTML += "<br>";
                         }
@@ -223,9 +198,7 @@ QString TransactionDesc::toHTML(CWallet *wallet, CWalletTx &wtx)
                 }
                 int64 nTxFee = nDebit - wtx.GetValueOut();
                 if (nTxFee > 0)
-                {
                     strHTML += "<b>" + tr("Transaction fee") + ":</b> " + BitcoinUnits::formatWithUnit(BitcoinUnits::BTC, -nTxFee) + "<br>";
-                }
             }
             else
             {
@@ -235,16 +208,12 @@ QString TransactionDesc::toHTML(CWallet *wallet, CWalletTx &wtx)
                 BOOST_FOREACH (const CTxIn& txin, wtx.vin)
                 {
                     if (wallet->IsMine(txin))
-                    {
                         strHTML += "<b>" + tr("Debit") + ":</b> " + BitcoinUnits::formatWithUnit(BitcoinUnits::BTC, -wallet->GetDebit(txin)) + "<br>";
-                    }
                 }
                 BOOST_FOREACH (const CTxOut& txout, wtx.vout)
                 {
                     if (wallet->IsMine(txout))
-                    {
                         strHTML += "<b>" + tr("Credit") + ":</b> " + BitcoinUnits::formatWithUnit(BitcoinUnits::BTC, wallet->GetCredit(txout)) + "<br>";
-                    }
                 }
             }
         }
@@ -254,22 +223,16 @@ QString TransactionDesc::toHTML(CWallet *wallet, CWalletTx &wtx)
         //
         // Message
         //
-        if (wtx.mapValue.count("message") && (!wtx.mapValue["message"].empty()))
-        {
+        if (wtx.mapValue.count("message") && !wtx.mapValue["message"].empty())
              strHTML += "<br><b>" + tr("Message") + ":</b><br>" + GUIUtil::HtmlEscape(wtx.mapValue["message"], true) + "<br>";
-        }
-        
-        if (wtx.mapValue.count("comment") && (!wtx.mapValue["comment"].empty()))
-        {
+
+        if (wtx.mapValue.count("comment") && !wtx.mapValue["comment"].empty())
             strHTML += "<br><b>" + tr("Comment") + ":</b><br>" + GUIUtil::HtmlEscape(wtx.mapValue["comment"], true) + "<br>";
-        }
 
         strHTML += "<b>" + tr("Transaction ID") + ":</b> " + wtx.GetHash().ToString().c_str() + "<br>";
 
         if (wtx.IsCoinBase() || wtx.IsCoinStake())
-        {
             strHTML += "<br>" + tr("Generated coins must mature 50 blocks before they can be spent. When you generated this block, it was broadcast to the network to be added to the block chain. If it fails to get into the chain, its state will change to \"not accepted\" and it won't be spendable. This may occasionally happen if another node generates a block within a few seconds of yours.") + "<br>";
-        }
         
         //
         // Debug view
@@ -277,27 +240,20 @@ QString TransactionDesc::toHTML(CWallet *wallet, CWalletTx &wtx)
         if (fDebug)
         {
             strHTML += "<hr><br>" + tr("Debug information") + "<br><br>";
-            
             BOOST_FOREACH (const CTxIn& txin, wtx.vin)
             {
                 if (wallet->IsMine(txin))
-                {
                     strHTML += "<b>" + tr("Debit") + ":</b> " + BitcoinUnits::formatWithUnit(BitcoinUnits::BTC, -wallet->GetDebit(txin)) + "<br>";
-                }
             }
             
             BOOST_FOREACH (const CTxOut& txout, wtx.vout)
             {
                 if (wallet->IsMine(txout))
-                {
                     strHTML += "<b>" + tr("Credit") + ":</b> " + BitcoinUnits::formatWithUnit(BitcoinUnits::BTC, wallet->GetCredit(txout)) + "<br>";
-                }
             }
 
             strHTML += "<br><b>" + tr("Transaction") + ":</b><br>";
             strHTML += GUIUtil::HtmlEscape(wtx.ToString(), true);
-
-            CTxDB txdb("r"); // To fetch source txouts
 
             strHTML += "<br><b>" + tr("Inputs") + ":</b>";
             strHTML += "<ul>";
@@ -307,8 +263,8 @@ QString TransactionDesc::toHTML(CWallet *wallet, CWalletTx &wtx)
                 BOOST_FOREACH (const CTxIn& txin, wtx.vin)
                 {
                     COutPoint prevout = txin.prevout;
-                    CTransaction prev;
-                    if(txdb.ReadDiskTx(prevout.hash, prev))
+                    CCoins prev;
+                    if(pcoinsTip->GetCoins(prevout.hash, prev))
                     {
                         if (prevout.n < prev.vout.size())
                         {
@@ -318,9 +274,7 @@ QString TransactionDesc::toHTML(CWallet *wallet, CWalletTx &wtx)
                             if (ExtractDestination(vout.scriptPubKey, address))
                             {
                                 if (wallet->mapAddressBook.count(address) && !wallet->mapAddressBook[address].empty())
-                                {
                                     strHTML += GUIUtil::HtmlEscape(wallet->mapAddressBook[address]) + " ";
-                                }
                                 strHTML += QString::fromStdString(CBitcoinAddress(address).ToString());
                             }
                             strHTML = strHTML + " " + tr("Amount") + "=" + BitcoinUnits::formatWithUnit(BitcoinUnits::BTC, vout.nValue);

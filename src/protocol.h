@@ -56,7 +56,8 @@ class CMessageHeader
             CHECKSUM_SIZE=sizeof(int),
 
             MESSAGE_SIZE_OFFSET=MESSAGE_START_SIZE+COMMAND_SIZE,
-            CHECKSUM_OFFSET=MESSAGE_SIZE_OFFSET+MESSAGE_SIZE_SIZE
+            CHECKSUM_OFFSET=MESSAGE_SIZE_OFFSET+MESSAGE_SIZE_SIZE,
+            HEADER_SIZE=MESSAGE_START_SIZE+COMMAND_SIZE+MESSAGE_SIZE_SIZE+CHECKSUM_SIZE
         };
         char pchMessageStart[MESSAGE_START_SIZE];
         char pchCommand[COMMAND_SIZE];
@@ -68,6 +69,7 @@ class CMessageHeader
 enum
 {
     NODE_NETWORK = (1 << 0),
+    NODE_BLOOM = (1 << 1),
 };
 
 /** A CService with information about it as peer */
@@ -132,6 +134,17 @@ class CInv
     public:
         int type;
         uint256 hash;
+};
+
+enum
+{
+    MSG_TX = 1,
+    MSG_BLOCK,
+    // Nodes may always request a MSG_FILTERED_BLOCK in a getdata, however,
+    // MSG_FILTERED_BLOCK should not appear in any invs except as a part of getdata.
+    MSG_FILTERED_BLOCK,
+    // Nodes may can request a MSG_INDEX_BLOCK in a getdata.
+    MSG_INDEX_BLOCK,
 };
 
 #endif // __INCLUDED_PROTOCOL_H__

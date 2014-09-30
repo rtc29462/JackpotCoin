@@ -1,3 +1,7 @@
+// Copyright (c) 2011-2013 The Bitcoin developers
+// Distributed under the MIT/X11 software license, see the accompanying
+// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+
 #include "transactionfilterproxy.h"
 #include "transactiontablemodel.h"
 #include "transactionrecord.h"
@@ -21,8 +25,11 @@ TransactionFilterProxy::TransactionFilterProxy(QObject *parent) :
     limitRows(-1),
     hideInvalid(true)
 {
-}
 
+
+
+
+}
 
 bool TransactionFilterProxy::filterAcceptsRow(int sourceRow, const QModelIndex &sourceParent) const
 {
@@ -35,31 +42,20 @@ bool TransactionFilterProxy::filterAcceptsRow(int sourceRow, const QModelIndex &
     qint64 amount = llabs(index.data(TransactionTableModel::AmountRole).toLongLong());
     int status = index.data(TransactionTableModel::StatusRole).toInt();
 
-    if (hideInvalid) {
+    if (hideInvalid)
        if ((status == TransactionStatus::Conflicted) || (status == TransactionStatus::NotAccepted))
-       {
             return false;
-       }
-    }
-    if (!(TYPE(type) & typeFilter))
-    {
+    if(!(TYPE(type) & typeFilter))
         return false;
-    }
-    if ((datetime < dateFrom) || (datetime > dateTo)) 
-    {
+    if(datetime < dateFrom || datetime > dateTo)
         return false;
-    }
     if (!address.contains(addrPrefix, Qt::CaseInsensitive) && !label.contains(addrPrefix, Qt::CaseInsensitive))
-    {
         return false;
-    }
-    if (amount < minAmount)
-    {
+    if(amount < minAmount)
         return false;
-    }
+
     return true;
 }
-
 
 void TransactionFilterProxy::setDateRange(const QDateTime &from, const QDateTime &to)
 {
@@ -68,13 +64,11 @@ void TransactionFilterProxy::setDateRange(const QDateTime &from, const QDateTime
     invalidateFilter();
 }
 
-
 void TransactionFilterProxy::setAddressPrefix(const QString &addrPrefix)
 {
     this->addrPrefix = addrPrefix;
     invalidateFilter();
 }
-
 
 void TransactionFilterProxy::setTypeFilter(quint32 modes)
 {
@@ -96,16 +90,14 @@ void TransactionFilterProxy::setMinAmount(qint64 minimum)
     invalidateFilter();
 }
 
-
 void TransactionFilterProxy::setLimit(int limit)
 {
     this->limitRows = limit;
 }
 
-
 int TransactionFilterProxy::rowCount(const QModelIndex &parent) const
 {
-    if (limitRows != -1)
+    if(limitRows != -1)
     {
         return std::min(QSortFilterProxyModel::rowCount(parent), limitRows);
     }

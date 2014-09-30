@@ -1,5 +1,8 @@
-#include "ui_signverifymessagedialog.h"
+// Copyright (c) 2011-2013 The Bitcoin developers
+// Distributed under the MIT/X11 software license, see the accompanying
+// file COPYING or http://www.opensource.org/licenses/mit-license.php.
 #include "signverifymessagedialog.h"
+#include "ui_signverifymessagedialog.h"
 #include "addressbookpage.h"
 #include "base58.h"
 #include "guiutil.h"
@@ -9,10 +12,10 @@
 #include "walletmodel.h"
 #include "wallet.h"
 
+#include <QClipboard>
 #include <string>
 #include <vector>
 
-#include <QClipboard>
 
 SignVerifyMessageDialog::SignVerifyMessageDialog(QWidget *parent) :
     QDialog(parent),
@@ -56,15 +59,14 @@ void SignVerifyMessageDialog::setModel(WalletModel *model)
     this->model = model;
 }
 
-
-void SignVerifyMessageDialog::setAddress_SM(QString address)
+void SignVerifyMessageDialog::setAddress_SM(const QString &address)
 {
     ui->addressIn_SM->setText(address);
     ui->messageIn_SM->setFocus();
 }
 
 
-void SignVerifyMessageDialog::setAddress_VM(QString address)
+void SignVerifyMessageDialog::setAddress_VM(const QString &address)
 {
     ui->addressIn_VM->setText(address);
     ui->messageIn_VM->setFocus();
@@ -75,9 +77,7 @@ void SignVerifyMessageDialog::showTab_SM(bool fShow)
 {
     ui->tabWidget->setCurrentIndex(0);
     if (fShow)
-    {
         this->show();
-    }
 }
 
 
@@ -85,9 +85,7 @@ void SignVerifyMessageDialog::showTab_VM(bool fShow)
 {
     ui->tabWidget->setCurrentIndex(1);
     if (fShow)
-    {
         this->show();
-    }
 }
 
 
@@ -113,7 +111,7 @@ void SignVerifyMessageDialog::on_pasteButton_SM_clicked()
 
 void SignVerifyMessageDialog::on_signMessageButton_SM_clicked()
 {
-    // Clear old signature to ensure users don't get confused on error with an old signature displayed
+    /* Clear old signature to ensure users don't get confused on error with an old signature displayed */
     ui->signatureOut_SM->clear();
 
     CBitcoinAddress addr(ui->addressIn_SM->text().toStdString());
@@ -124,7 +122,7 @@ void SignVerifyMessageDialog::on_signMessageButton_SM_clicked()
         ui->statusLabel_SM->setText(tr("The entered address is invalid.") + QString(" ") + tr("Please check the address and try again."));
         return;
     }
-    
+
     CKeyID keyID;
     if (!addr.GetKeyID(keyID))
     {
@@ -134,8 +132,7 @@ void SignVerifyMessageDialog::on_signMessageButton_SM_clicked()
         return;
     }
 
-    WalletModel::UnlockContext ctx(model->requestUnlock());
-    if (!ctx.isValid())
+    if (!model->unlockWallet())
     {
         ui->statusLabel_SM->setStyleSheet("QLabel { color: red; }");
         ui->statusLabel_SM->setText(tr("Wallet unlock was cancelled."));
@@ -208,7 +205,7 @@ void SignVerifyMessageDialog::on_verifyMessageButton_VM_clicked()
         ui->statusLabel_VM->setText(tr("The entered address is invalid.") + QString(" ") + tr("Please check the address and try again."));
         return;
     }
-    
+
     CKeyID keyID;
     if (!addr.GetKeyID(keyID))
     {
@@ -232,8 +229,8 @@ void SignVerifyMessageDialog::on_verifyMessageButton_VM_clicked()
     ss << strMessageMagic;
     ss << ui->messageIn_VM->document()->toPlainText().toStdString();
 
-    CKey key;
-    if (!key.SetCompactSignature(Hash(ss.begin(), ss.end()), vchSig))
+    CPubKey pubkey;
+    if (!pubkey.RecoverCompact(Hash(ss.begin(), ss.end()), vchSig))
     {
         ui->signatureIn_VM->setValid(false);
         ui->statusLabel_VM->setStyleSheet("QLabel { color: red; }");
@@ -241,7 +238,7 @@ void SignVerifyMessageDialog::on_verifyMessageButton_VM_clicked()
         return;
     }
 
-    if (!(CBitcoinAddress(key.GetPubKey().GetID()) == addr))
+    if (!(CBitcoinAddress(pubkey.GetID()) == addr))
     {
         ui->statusLabel_VM->setStyleSheet("QLabel { color: red; }");
         ui->statusLabel_VM->setText(QString("<nobr>") + tr("Message verification failed.") + QString("</nobr>"));
@@ -269,9 +266,10 @@ bool SignVerifyMessageDialog::eventFilter(QObject *object, QEvent *event)
     {
         if (ui->tabWidget->currentIndex() == 0)
         {
-            // Clear status message on focus change
+            /* Clear status message on focus change */
             ui->statusLabel_SM->clear();
-            // Select generated signature
+
+            /* Select generated signature */
             if (object == ui->signatureOut_SM)
             {
                 ui->signatureOut_SM->selectAll();
@@ -280,7 +278,7 @@ bool SignVerifyMessageDialog::eventFilter(QObject *object, QEvent *event)
         }
         else if (ui->tabWidget->currentIndex() == 1)
         {
-            // Clear status message on focus change
+            /* Clear status message on focus change */
             ui->statusLabel_VM->clear();
         }
     }

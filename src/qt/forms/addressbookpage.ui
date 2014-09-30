@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>760</width>
+    <width>778</width>
     <height>380</height>
    </rect>
   </property>
@@ -139,17 +139,15 @@
       </widget>
      </item>
      <item>
-      <spacer name="horizontalSpacer">
-       <property name="orientation">
-        <enum>Qt::Horizontal</enum>
+      <widget class="QPushButton" name="exportButton">
+       <property name="text">
+        <string>Export</string>
        </property>
-       <property name="sizeHint" stdset="0">
-        <size>
-         <width>40</width>
-         <height>20</height>
-        </size>
+       <property name="icon">
+        <iconset resource="../bitcoin.qrc">
+         <normaloff>:/icons/export</normaloff>:/icons/export</iconset>
        </property>
-      </spacer>
+      </widget>
      </item>
      <item>
       <widget class="QDialogButtonBox" name="buttonBox">

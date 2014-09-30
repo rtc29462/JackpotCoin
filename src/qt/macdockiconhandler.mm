@@ -1,9 +1,9 @@
 #include "macdockiconhandler.h"
 
-#include <QImageWriter>
 #include <QMenu>
-#include <QTemporaryFile>
 #include <QWidget>
+#include <QTemporaryFile>
+#include <QImageWriter>
 
 #undef slots
 #include <Cocoa/Cocoa.h>
@@ -83,19 +83,13 @@ void MacDockIconHandler::setIcon(const QIcon &icon)
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
     NSImage *image = nil;
     if (icon.isNull()) 
-    {
         image = [[NSImage imageNamed:@"NSApplicationIcon"] retain];
-    }
-    else 
-    {
+    else  {
+        // generate NSImage from QIcon and use this as dock icon.
         QSize size = icon.actualSize(QSize(128, 128));
         QPixmap pixmap = icon.pixmap(size);
 
-//      CGImageRef cgImage = pixmap.toMacCGImageRef();
-//      image = [[NSImage alloc] initWithCGImage:cgImage size:NSZeroSize];
-//      CFRelease(cgImage);
-
-        // write temp file DRM (could also be done through QIODevice [memory])
+        // write temp file hack (could also be done through QIODevice [memory])
         QTemporaryFile notificationIconFile;
         if (!pixmap.isNull() && notificationIconFile.open()) {
             QImageWriter writer(&notificationIconFile, "PNG");
@@ -121,9 +115,7 @@ MacDockIconHandler *MacDockIconHandler::instance()
 {
     static MacDockIconHandler *s_instance = NULL;
     if (!s_instance) 
-    {
         s_instance = new MacDockIconHandler();
-    }
     return s_instance;
 }
 

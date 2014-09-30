@@ -19,10 +19,69 @@
 #endif
 
 
+//
+// Hashing for JPC Clinent 1.60 ~ 
+//
+inline uint256 HashSHA3V3(char * input) {
+
+    sph_blake512_context     ctx_blake;
+    sph_groestl512_context   ctx_groestl;
+    sph_jh512_context        ctx_jh;
+    sph_keccak512_context    ctx_keccak;
+    sph_skein512_context     ctx_skein;
+
+    uint512 hash;
+
+    sph_keccak512_init(&ctx_keccak);
+    sph_keccak512 (&ctx_keccak, input, 80 + 16);
+    sph_keccak512_close(&ctx_keccak, (&hash));
+
+    unsigned int round;
+    for (round = 0; round < 3; round++) {
+        if (hash.Get32(0) & 0x01) {
+           sph_groestl512_init(&ctx_groestl);
+           sph_groestl512 (&ctx_groestl, (&hash), 64);
+           sph_groestl512_close(&ctx_groestl, (&hash));
+        }
+        else {
+           sph_skein512_init(&ctx_skein);
+           sph_skein512 (&ctx_skein, (&hash), 64);
+           sph_skein512_close(&ctx_skein, (&hash));
+        }
+        if (hash.Get32(0) & 0x01) {
+           sph_blake512_init(&ctx_blake);
+           sph_blake512 (&ctx_blake, (&hash), 64);
+           sph_blake512_close(&ctx_blake, (&hash));
+        }
+        else {
+           sph_jh512_init(&ctx_jh);
+           sph_jh512 (&ctx_jh, (&hash), 64);
+           sph_jh512_close(&ctx_jh, (&hash));
+        }
+    }
+
+    return hash.trim256();
+
+}
+
+inline uint256 HashSHA3V3POS(char * input) {
+    sph_keccak512_context    ctx_keccak;
+
+    uint512 hash;
+
+    sph_keccak512_init(&ctx_keccak);
+    sph_keccak512 (&ctx_keccak, input, 80 + 16);
+    sph_keccak512_close(&ctx_keccak, (&hash));
+
+    return hash.trim256();
+
+}
 
 
-
-inline uint256 HashSHA3V2(char * input, unsigned int round_mask) {
+//
+// Hashing for JPC Client 1.10 ~ 1.5x
+//
+inline uint256 HashSHA3V2(char * input) {
 
     sph_blake512_context     ctx_blake;
     sph_groestl512_context   ctx_groestl;
@@ -38,7 +97,7 @@ inline uint256 HashSHA3V2(char * input, unsigned int round_mask) {
 
     unsigned int round;
     for (round = 0; round < 3; round++) {
-        if (hash.GetUInt32(0) & 0x01) {
+        if (hash.Get32(0) & 0x01) {
            sph_groestl512_init(&ctx_groestl);
            sph_groestl512 (&ctx_groestl, (&hash), 64);
            sph_groestl512_close(&ctx_groestl, (&hash));
@@ -48,7 +107,7 @@ inline uint256 HashSHA3V2(char * input, unsigned int round_mask) {
            sph_skein512 (&ctx_skein, (&hash), 64);
            sph_skein512_close(&ctx_skein, (&hash));
         }
-        if (hash.GetUInt32(0) & 0x01) {
+        if (hash.Get32(0) & 0x01) {
            sph_blake512_init(&ctx_blake);
            sph_blake512 (&ctx_blake, (&hash), 64);
            sph_blake512_close(&ctx_blake, (&hash));
@@ -65,8 +124,10 @@ inline uint256 HashSHA3V2(char * input, unsigned int round_mask) {
 }
 
 
-
-inline uint256 HashSHA3V1(char * input, unsigned int round_mask) {
+//
+// Hashing for JPC Client 1.0x
+//
+inline uint256 HashSHA3V1(char * input) {
 
     sph_blake512_context     ctx_blake;
     sph_groestl512_context   ctx_groestl;
@@ -80,18 +141,17 @@ inline uint256 HashSHA3V1(char * input, unsigned int round_mask) {
     sph_keccak512 (&ctx_keccak, input, 88);
     sph_keccak512_close(&ctx_keccak, (&hash));
 
-    unsigned int round_max  = hash.GetUInt32(0) & round_mask;
+    unsigned int round_max  = hash.Get32(0) & 0x00000007;
 
     if (fDebugHash) {
        printf("Hash SHA3    : %s   \n", hash.GetHex().c_str());
-       printf("Round mask   : %.8x \n", round_mask);
-       printf("Masked value : %.8x \n", round_max);
+       printf("Rounds    : %.8x \n", round_max);
     }
 
     unsigned int round;
     unsigned int method;
     for (round = 0; round < round_max; round++) {
-        method = (hash.GetUInt32(0) & 0x00000003);
+        method = (hash.Get32(0) & 0x00000003);
         switch (method) {
           case 0:
                sph_blake512_init(&ctx_blake);
@@ -126,7 +186,7 @@ inline uint256 HashSHA3V1(char * input, unsigned int round_mask) {
 
 
 template<typename T1>
-inline uint256 HashSHA3(const T1 pbegin, const T1 pend) {
+inline uint256 HashSHA3(const T1 pbegin, const unsigned int option) {
 
     char * ptr = (char*)(&pbegin[0]);
 
@@ -139,13 +199,16 @@ inline uint256 HashSHA3(const T1 pbegin, const T1 pend) {
        printf("\n");
     }
 
-    unsigned int round_mask = *(unsigned int *)(&pbegin[84]);
-    if (round_mask == 7) {
-       return HashSHA3V1(ptr, round_mask);
+    switch (option & 0x000000ff) {
+      case 7:
+           return HashSHA3V1(ptr);
+      case 8:
+           return HashSHA3V2(ptr);
+      case 100:
+           return HashSHA3V3(ptr);
     }
-    else {
-       return HashSHA3V2(ptr, round_mask);
-    }
+    return HashSHA3V3POS(ptr);
+
 }
 
 
