@@ -1,7 +1,3 @@
-// Copyright (c) 2011-2013 The Bitcoin developers
-// Distributed under the MIT/X11 software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
 #ifndef GUIUTIL_H
 #define GUIUTIL_H
 
@@ -19,10 +15,9 @@ class QDateTime;
 class QUrl;
 class QAbstractItemView;
 QT_END_NAMESPACE
+class SendCoinsRecipient;
 
-
-/** Utility functions used by the Bitcoin Qt UI.
- */
+// Utility functions used by the Bitcoin Qt UI.
 namespace GUIUtil
 {
     // Create human-readable string from date
@@ -45,35 +40,30 @@ namespace GUIUtil
     QString HtmlEscape(const QString& str, bool fMultiLine=false);
     QString HtmlEscape(const std::string& str, bool fMultiLine=false);
 
-    /** Copy a field of the currently selected entry of a view to the clipboard. Does nothing if nothing
-        is selected.
-       @param[in] column  Data column to extract from the model
-       @param[in] role    Data role to extract from the model
-       @see  TransactionView::copyLabel, TransactionView::copyAmount, TransactionView::copyAddress
-     */
+    // Copy a field of the currently selected entry of a view to the clipboard. Does nothing if nothing
+    // is selected.
+    // column  Data column to extract from the model
+    // role    Data role to extract from the model
+    // TransactionView::copyLabel, TransactionView::copyAmount, TransactionView::copyAddress
     void copyEntryData(QAbstractItemView *view, int column, int role=Qt::EditRole);
 
     void setClipboard(const QString& str);
     
-    /** Get save filename, mimics QFileDialog::getSaveFileName, except that it appends a default suffix
-        when no suffix is provided by the user.
-
-      @param[in] parent  Parent window (or 0)
-      @param[in] caption Window caption (or empty, for default)
-      @param[in] dir     Starting directory (or empty, to default to documents directory)
-      @param[in] filter  Filter specification such as "Comma Separated Files (*.csv)"
-      @param[out] selectedSuffixOut  Pointer to return the suffix (file type) that was selected (or 0).
-                  Can be useful when choosing the save file format based on suffix.
-     */
+    // Get save filename, mimics QFileDialog::getSaveFileName, except that it appends a default suffix
+    // when no suffix is provided by the user.
+    // parent  Parent window (or 0)
+    // caption Window caption (or empty, for default)
+    // dir     Starting directory (or empty, to default to documents directory)
+    // filter  Filter specification such as "Comma Separated Files (*.csv)"
+    // selectedSuffixOut  Pointer to return the suffix (file type) that was selected (or 0).
+    //            Can be useful when choosing the save file format based on suffix.
     QString getSaveFileName(QWidget *parent=0, const QString &caption=QString(),
                                    const QString &dir=QString(), const QString &filter=QString(),
                                    QString *selectedSuffixOut=0);
 
-    /** Get connection type to call object slot in GUI thread with invokeMethod. The call will be blocking.
-
-       @returns If called from the GUI thread, return a Qt::DirectConnection.
-                If called from another thread, return a Qt::BlockingQueuedConnection.
-    */
+    // Get connection type to call object slot in GUI thread with invokeMethod. The call will be blocking.
+    // returns If called from the GUI thread, return a Qt::DirectConnection.
+    //         If called from another thread, return a Qt::BlockingQueuedConnection.
     Qt::ConnectionType blockingGUIThreadConnection();
 
     // Determine whether a widget is hidden behind other windows
@@ -82,10 +72,9 @@ namespace GUIUtil
     // Open debug.log
     void openDebugLogfile();
 
-    /** Qt event filter that intercepts ToolTipChange events, and replaces the tooltip with a rich text
-      representation if needed. This assures that Qt can word-wrap long tooltip messages.
-      Tooltips longer than the provided size threshold (in characters) are wrapped.
-     */
+    // Qt event filter that intercepts ToolTipChange events, and replaces the tooltip with a rich text
+    // representation if needed. This assures that Qt can word-wrap long tooltip messages.
+    // Tooltips longer than the provided size threshold (in characters) are wrapped.
     class ToolTipToRichTextFilter : public QObject
     {
         Q_OBJECT
@@ -98,12 +87,13 @@ namespace GUIUtil
 
     private:
         int size_threshold;
+        
     };
 
     bool GetStartOnSystemStartup();
     bool SetStartOnSystemStartup(bool fAutoStart);
 
-    /** Help message for Bitcoin-Qt, shown with --help. */
+    // Help message for Bitcoin-Qt, shown with --help.
     class HelpMessageBox : public QMessageBox
     {
         Q_OBJECT
@@ -111,18 +101,19 @@ namespace GUIUtil
     public:
         HelpMessageBox(QWidget *parent = 0);
 
-        /** Show message box or print help message to standard output, based on operating system. */
+        // Show message box or print help message to standard output, based on operating system.
         void showOrPrint();
 
-        /** Print help message to console */
+        // Print help message to console
         void printToConsole();
 
     private:
         QString header;
         QString coreOptions;
         QString uiOptions;
+        
     };
 
-} // namespace GUIUtil
+}
 
 #endif // GUIUTIL_H

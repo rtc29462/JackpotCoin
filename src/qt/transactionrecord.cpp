@@ -1,44 +1,33 @@
-// Copyright (c) 2011-2013 The Bitcoin developers
-// Distributed under the MIT/X11 software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
 #include "transactionrecord.h"
 #include "wallet.h"
 #include "base58.h"
 
-/* Return positive answer if transaction should be shown in list.
- */
+// Return positive answer if transaction should be shown in list.
 bool TransactionRecord::showTransaction(const CWalletTx &wtx)
 {
-    if (wtx.IsCoinBaseOrStake())
+    if (wtx.IsCoinBase() || wtx.IsCoinStake())
     {
+        //
         // Ensures we show generated coins / mined transactions at depth 1
-        if (!wtx.IsInMainChain())
-        {
-            return false;
-        }
+        //
+        // return (wtx.IsInMainChain());
     }
     return true;
 }
 
-/*
- * Decompose CWallet transaction to model transaction records.
- */
+// Decompose CWallet transaction to model transaction records.
 QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *wallet, const CWalletTx &wtx)
 {
     QList<TransactionRecord> parts;
-    int64 nTime = wtx.GetTxTime();
-    int64 nCredit = wtx.GetCredit(true);
-    int64 nDebit = wtx.GetDebit();
-    int64 nNet = nCredit - nDebit;
+    int64_t nTime = wtx.GetTxTime();
+    int64_t nCredit = wtx.GetCredit(true);
+    int64_t nDebit = wtx.GetDebit();
+    int64_t nNet = nCredit - nDebit;
     uint256 hash = wtx.GetHash(), hashPrev = 0;
     std::map<std::string, std::string> mapValue = wtx.mapValue;
 
-    if ((nNet > 0) || (wtx.IsCoinBaseOrStake()))
+    if ((nNet > 0) || (wtx.IsCoinBase() || wtx.IsCoinStake()))
     {
-        //
-        // Credit
-        //
         BOOST_FOREACH (const CTxOut& txout, wtx.vout)
         {
             if (wallet->IsMine(txout))
@@ -98,13 +87,10 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
             // Payment to self
             int64 nChange = wtx.GetChange();
             parts.append(TransactionRecord(hash, nTime, TransactionRecord::SendToSelf, "",
-                            -(nDebit - nChange), nCredit - nChange));
+                            0 - (nDebit - nChange), nCredit - nChange));
         }
         else if (fAllFromMe)
         {
-            //
-            // Debit
-            //
             int64 nTxFee = nDebit - wtx.GetValueOut();
             for (unsigned int nOut = 0; nOut < wtx.vout.size(); nOut++)
             {
@@ -134,7 +120,7 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
                 }
 
                 int64 nValue = txout.nValue;
-                /* Add fee to first output */
+                //  Add fee to first output
                 if (nTxFee > 0)
                 {
                     nValue += nTxFee;
@@ -146,9 +132,7 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
         }
         else
         {
-            //
             // Mixed debit transaction, can't break down payees
-            //
             parts.append(TransactionRecord(hash, nTime, TransactionRecord::Other, "", nNet, 0));
         }
     }
@@ -164,7 +148,9 @@ void TransactionRecord::updateStatus(const CWalletTx &wtx)
     CBlockIndex* pindex = NULL;
     std::map<uint256, CBlockIndex*>::iterator mi = mapBlockIndex.find(wtx.hashBlock);
     if (mi != mapBlockIndex.end())
+    {
         pindex = (*mi).second;
+    }
     
     // Sort order, unrecorded transactions sort to the top
     status.sortKey = strprintf("%010d-%01d-%010u-%03d",
@@ -228,7 +214,7 @@ void TransactionRecord::updateStatus(const CWalletTx &wtx)
         {
             status.status = TransactionStatus::Unconfirmed;
         }
-        else if (status.depth < MATURITY_TRANSACTION)
+        else if (status.depth < RecommendedNumConfirmations)
         {
             status.status = TransactionStatus::Confirming;
         }
@@ -242,11 +228,11 @@ void TransactionRecord::updateStatus(const CWalletTx &wtx)
 
 bool TransactionRecord::statusUpdateNeeded()
 {
-    return status.cur_num_blocks != nBestHeight;
+    return (status.cur_num_blocks != nBestHeight);
 }
 
 
 std::string TransactionRecord::getTxID()
 {
-    return hash.ToString() + strprintf("-%03d", idx);
+    return (hash.ToString() + strprintf("-%03d", idx));
 }

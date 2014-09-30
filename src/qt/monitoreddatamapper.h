@@ -1,7 +1,3 @@
-// Copyright (c) 2011-2013 The Bitcoin developers
-// Distributed under the MIT/X11 software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
 #ifndef MONITOREDDATAMAPPER_H
 #define MONITOREDDATAMAPPER_H
 
@@ -11,9 +7,8 @@ QT_BEGIN_NAMESPACE
 class QWidget;
 QT_END_NAMESPACE
 
-/** Data to Widget mapper that watches for edits and notifies listeners when a field is edited.
-   This can be used, for example, to enable a commit/apply button in a configuration dialog.
- */
+// Data to Widget mapper that watches for edits and notifies listeners when a field is edited.
+// This can be used, for example, to enable a commit/apply button in a configuration dialog.
 class MonitoredDataMapper : public QDataWidgetMapper
 {
     Q_OBJECT

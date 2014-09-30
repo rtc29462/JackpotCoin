@@ -1,7 +1,3 @@
-// Copyright (c) 2011-2013 The Bitcoin developers
-// Distributed under the MIT/X11 software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
 #include "transactionview.h"
 #include "transactionfilterproxy.h"
 #include "transactionrecord.h"
@@ -23,9 +19,12 @@
 #include <QLineEdit>
 #include <QTableView>
 #include <QHeaderView>
+#include <QPushButton>
 #include <QMessageBox>
 #include <QPoint>
 #include <QMenu>
+#include <QApplication>
+#include <QClipboard>
 #include <QLabel>
 #include <QDateTimeEdit>
 
@@ -83,14 +82,12 @@ TransactionView::TransactionView(QWidget *parent) :
 
     addressWidget = new QLineEdit(this);
 #if QT_VERSION >= 0x040700
-    /* Do not move this to the XML file, Qt before 4.7 will choke on it */
     addressWidget->setPlaceholderText(tr("Enter address or label to search"));
 #endif
     hlayout->addWidget(addressWidget);
 
     amountWidget = new QLineEdit(this);
 #if QT_VERSION >= 0x040700
-    /* Do not move this to the XML file, Qt before 4.7 will choke on it */
     amountWidget->setPlaceholderText(tr("Min amount"));
 #endif
 #ifdef Q_OS_MAC
@@ -111,6 +108,7 @@ TransactionView::TransactionView(QWidget *parent) :
     vlayout->addWidget(view);
     vlayout->setSpacing(0);
     int width = view->verticalScrollBar()->sizeHint().width();
+    
     // Cover scroll bar width with spacing
 #ifdef Q_OS_MAC
     hlayout->addSpacing(width + 2);
@@ -180,127 +178,108 @@ void TransactionView::setModel(WalletModel *model)
         transactionView->horizontalHeader()->resizeSection(TransactionTableModel::Status, 23);
         transactionView->horizontalHeader()->resizeSection(TransactionTableModel::Date, 120);
         transactionView->horizontalHeader()->resizeSection(TransactionTableModel::Type, 120);
-#if QT_VERSION < 0x050000
         transactionView->horizontalHeader()->setResizeMode(TransactionTableModel::ToAddress, QHeaderView::Stretch);
-#else
-        transactionView->horizontalHeader()->setSectionResizeMode(TransactionTableModel::ToAddress, QHeaderView::Stretch);
-#endif
         transactionView->horizontalHeader()->resizeSection(TransactionTableModel::Amount, 100);
-
-        // connect for transaction view updates
-        connect(model->getOptionsModel(), SIGNAL(hideInvalidChanged(bool)), this, SLOT(updateTransactionList(bool)));
-
     }
 }
 
 
 void TransactionView::chooseDate(int idx)
 {
-    if(!transactionProxyModel)
-        return;
-    QDate current = QDate::currentDate();
-    dateRangeWidget->setVisible(false);
-    switch (dateWidget->itemData(idx).toInt())
+    if (transactionProxyModel)
     {
-      case All:
-           transactionProxyModel->setDateRange(
-                 TransactionFilterProxy::MIN_DATE, 
-                 TransactionFilterProxy::MAX_DATE);
-           break;
-      case Today:
-           transactionProxyModel->setDateRange(
-                 QDateTime(current), 
-                 TransactionFilterProxy::MAX_DATE);
-           break;
-      case ThisWeek: {
-        // Find last Monday
-           QDate startOfWeek = current.addDays(-(current.dayOfWeek() - 1));
-           transactionProxyModel->setDateRange(
-                 QDateTime(startOfWeek), 
-                 TransactionFilterProxy::MAX_DATE);
-           } break;
-      case ThisMonth:
-           transactionProxyModel->setDateRange(
-                 QDateTime(QDate(current.year(), current.month(), 1)),
-                 TransactionFilterProxy::MAX_DATE);
-           break;
-      case LastMonth:
-           transactionProxyModel->setDateRange(
-                 QDateTime(QDate(current.year(), current.month() - 1, 1)),
-                 QDateTime(QDate(current.year(), current.month(), 1)));
-           break;
-      case ThisYear:
-           transactionProxyModel->setDateRange(
-                 QDateTime(QDate(current.year(), 1, 1)),
-                 TransactionFilterProxy::MAX_DATE);
-           break;
-      case Range:
-           dateRangeWidget->setVisible(true);
-           dateRangeChanged();
-           break;
+        QDate current = QDate::currentDate();
+        dateRangeWidget->setVisible(false);
+        switch (dateWidget->itemData(idx).toInt())
+        {
+          case All:
+               transactionProxyModel->setDateRange(TransactionFilterProxy::MIN_DATE, TransactionFilterProxy::MAX_DATE);
+               break;
+          case Today:
+               transactionProxyModel->setDateRange(QDateTime(current), TransactionFilterProxy::MAX_DATE);
+               break;
+          case ThisWeek: 
+          {
+               QDate startOfWeek = current.addDays(0 - (current.dayOfWeek() - 1));
+               transactionProxyModel->setDateRange(QDateTime(startOfWeek), TransactionFilterProxy::MAX_DATE);
+          } 
+               break;
+          case ThisMonth:
+               transactionProxyModel->setDateRange(QDateTime(QDate(current.year(), current.month(), 1)), TransactionFilterProxy::MAX_DATE);
+               break;
+          case LastMonth:
+               transactionProxyModel->setDateRange(QDateTime(QDate(current.year(), current.month() - 1, 1)), QDateTime(QDate(current.year(), current.month(), 1)));
+               break;
+          case ThisYear:
+               transactionProxyModel->setDateRange(QDateTime(QDate(current.year(), 1, 1)), TransactionFilterProxy::MAX_DATE);
+               break;
+          case Range:
+               dateRangeWidget->setVisible(true);
+               dateRangeChanged();
+               break;
+        }
     }
 }
 
 
 void TransactionView::chooseType(int idx)
 {
-    if(!transactionProxyModel)
-        return;
-    transactionProxyModel->setTypeFilter(
-          typeWidget->itemData(idx).toInt());
+    if (transactionProxyModel)
+    {
+        transactionProxyModel->setTypeFilter(typeWidget->itemData(idx).toInt());
+    }
 }
 
 
 void TransactionView::changedPrefix(const QString &prefix)
 {
-    if (!transactionProxyModel)
-        return;
-    transactionProxyModel->setAddressPrefix(prefix);
+    if (transactionProxyModel)
+    {
+        transactionProxyModel->setAddressPrefix(prefix);
+    }
 }
 
 
 void TransactionView::changedAmount(const QString &amount)
 {
-    if (!transactionProxyModel)
-        return;
-    if (!model)
-        return;
-    qint64 amount_parsed = 0;
-    if (BitcoinUnits::parse(model->getOptionsModel()->getDisplayUnit(), amount, &amount_parsed))
+    if (transactionProxyModel)
     {
-        transactionProxyModel->setMinAmount(amount_parsed);
-    }
-    else
-    {
-        transactionProxyModel->setMinAmount(0);
+        qint64 amount_parsed = 0;
+        if (BitcoinUnits::parse(model->getOptionsModel()->getDisplayUnit(), amount, &amount_parsed))
+        {
+            transactionProxyModel->setMinAmount(amount_parsed);
+        }
+        else
+        {
+            transactionProxyModel->setMinAmount(0);
+        }
     }
 }
 
 
 void TransactionView::exportClicked()
 {
-    // CSV is currently the only supported format
     QString filename = GUIUtil::getSaveFileName(
             this,
             tr("Export Transaction Data"), QString(),
             tr("Comma separated file (*.csv)"));
 
-    if (filename.isNull()) return;
-    CSVModelWriter writer(filename);
-
-    // name, column, role
-    writer.setModel(transactionProxyModel);
-    writer.addColumn(tr("Confirmed"), 0, TransactionTableModel::ConfirmedRole);
-    writer.addColumn(tr("Date"), 0, TransactionTableModel::DateRole);
-    writer.addColumn(tr("Type"), TransactionTableModel::Type, Qt::EditRole);
-    writer.addColumn(tr("Label"), 0, TransactionTableModel::LabelRole);
-    writer.addColumn(tr("Address"), 0, TransactionTableModel::AddressRole);
-    writer.addColumn(tr("Amount"), 0, TransactionTableModel::FormattedAmountRole);
-    writer.addColumn(tr("ID"), 0, TransactionTableModel::TxIDRole);
-    if (!writer.write())
+    if (!filename.isNull())
     {
-        QMessageBox::critical(this, tr("Error exporting"), tr("Could not write to file %1.").arg(filename),
-                              QMessageBox::Abort, QMessageBox::Abort);
+        CSVModelWriter writer(filename);
+        writer.setModel(transactionProxyModel);
+        writer.addColumn(tr("Confirmed"), 0, TransactionTableModel::ConfirmedRole);
+        writer.addColumn(tr("Date"), 0, TransactionTableModel::DateRole);
+        writer.addColumn(tr("Type"), TransactionTableModel::Type, Qt::EditRole);
+        writer.addColumn(tr("Label"), 0, TransactionTableModel::LabelRole);
+        writer.addColumn(tr("Address"), 0, TransactionTableModel::AddressRole);
+        writer.addColumn(tr("Amount"), 0, TransactionTableModel::FormattedAmountRole);
+        writer.addColumn(tr("ID"), 0, TransactionTableModel::TxIDRole);
+        if (!writer.write())
+        {
+            QMessageBox::critical(this, tr("Error exporting"), tr("Could not write to file %1.").arg(filename),
+                                  QMessageBox::Abort, QMessageBox::Abort);
+        }
     }
 }
 
@@ -341,46 +320,44 @@ void TransactionView::copyTxID()
 
 void TransactionView::editLabel()
 {
-    if(!transactionView->selectionModel() ||!model)
-        return;
-    QModelIndexList selection = transactionView->selectionModel()->selectedRows();
-    if (!selection.isEmpty())
+    if (transactionView->selectionModel() && model)
     {
-        AddressTableModel *addressBook = model->getAddressTableModel();
-        if(!addressBook)
-            return;
-        QString address = selection.at(0).data(TransactionTableModel::AddressRole).toString();
-        if(address.isEmpty())
+        QModelIndexList selection = transactionView->selectionModel()->selectedRows();
+        if (!selection.isEmpty())
         {
-            // If this transaction has no associated address, exit
-            return;
-        }
-        // Is address in address book? Address book can miss address when a transaction is
-        // sent from outside the UI.
-        int idx = addressBook->lookupAddress(address);
-        if (idx != -1)
-        {
-            // Edit sending / receiving address
-            QModelIndex modelIdx = addressBook->index(idx, 0, QModelIndex());
-            // Determine type of address, launch appropriate editor dialog type
-            QString type = modelIdx.data(AddressTableModel::TypeRole).toString();
-
-            EditAddressDialog dlg(type == AddressTableModel::Receive
-                                          ? EditAddressDialog::EditReceivingAddress
-                                          : EditAddressDialog::EditSendingAddress,
-                                  this);
-            dlg.setModel(addressBook);
-            dlg.loadRow(idx);
-            dlg.exec();
-        }
-        else
-        {
-            // Add sending address
-            EditAddressDialog dlg(EditAddressDialog::NewSendingAddress,
-                                  this);
-            dlg.setModel(addressBook);
-            dlg.setAddress(address);
-            dlg.exec();
+            AddressTableModel *addressBook = model->getAddressTableModel();
+            if (addressBook) {
+                QString address = selection.at(0).data(TransactionTableModel::AddressRole).toString();
+                if (!address.isEmpty())
+                {
+                    // Is address in address book? Address book can miss address when a transaction is
+                    // sent from outside the UI.
+                    int idx = addressBook->lookupAddress(address);
+                    if (idx != -1)
+                    {
+                        // Edit sending / receiving address
+                        QModelIndex modelIdx = addressBook->index(idx, 0, QModelIndex());
+                        // Determine type of address, launch appropriate editor dialog type
+                        QString type = modelIdx.data(AddressTableModel::TypeRole).toString();
+            
+                        EditAddressDialog dlg(type == AddressTableModel::Receive
+                                                      ? EditAddressDialog::EditReceivingAddress
+                                                      : EditAddressDialog::EditSendingAddress,
+                                              this);
+                        dlg.setModel(addressBook);
+                        dlg.loadRow(idx);
+                        dlg.exec();
+                    }
+                    else
+                    {
+                        // Add sending address
+                        EditAddressDialog dlg(EditAddressDialog::NewSendingAddress, this);
+                        dlg.setModel(addressBook);
+                        dlg.setAddress(address);
+                        dlg.exec();
+                    }
+                }
+            }
         }
     }
 }
@@ -388,14 +365,15 @@ void TransactionView::editLabel()
 
 void TransactionView::showDetails()
 {
-    if(!transactionView->selectionModel())
-        return;
-    QModelIndexList selection = transactionView->selectionModel()->selectedRows();
-    if(!selection.isEmpty())
+    if (transactionView->selectionModel())
     {
-        TransactionDescDialog dlg(selection.at(0));
-        dlg.exec();
-    }  
+        QModelIndexList selection = transactionView->selectionModel()->selectedRows();
+        if (!selection.isEmpty())
+        {
+            TransactionDescDialog dlg(selection.at(0));
+            dlg.exec();
+        }
+    }
 }
 
 
@@ -438,27 +416,29 @@ QWidget *TransactionView::createDateRangeWidget()
 
 void TransactionView::dateRangeChanged()
 {
-    if (!transactionProxyModel)
-        return;
-    transactionProxyModel->setDateRange(
-            QDateTime(dateFrom->date()),
-            QDateTime(dateTo->date()).addDays(1));
+    if (transactionProxyModel)
+    {
+        transactionProxyModel->setDateRange(QDateTime(dateFrom->date()), QDateTime(dateTo->date()).addDays(1));
+    }
 }
 
 
 void TransactionView::focusTransaction(const QModelIndex &idx)
 {
-    if (!transactionProxyModel)
-        return;
-    QModelIndex targetIdx = transactionProxyModel->mapFromSource(idx);
-    transactionView->scrollTo(targetIdx);
-    transactionView->setCurrentIndex(targetIdx);
-    transactionView->setFocus();
+    if (transactionProxyModel)
+    {
+        QModelIndex targetIdx = transactionProxyModel->mapFromSource(idx);
+        transactionView->scrollTo(targetIdx);
+        transactionView->setCurrentIndex(targetIdx);
+        transactionView->setFocus();
+    }
 }
+
 
 void TransactionView::updateTransactionList(bool hideInvalid)
 {
-    if (!transactionProxyModel)
-       return;
-    transactionProxyModel->setHideInvalid(hideInvalid);
+    if (transactionProxyModel)
+    {
+       transactionProxyModel->setHideInvalid(hideInvalid);
+    }
 }

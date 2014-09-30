@@ -6,72 +6,92 @@
 #include "keystore.h"
 #include "script.h"
 
+extern bool fWalletUnlockMintOnly;
+
 bool CKeyStore::GetPubKey(const CKeyID &address, CPubKey &vchPubKeyOut) const
 {
     CKey key;
     if (!GetKey(address, key))
+    {
         return false;
+    }
     vchPubKeyOut = key.GetPubKey();
     return true;
 }
 
-bool CKeyStore::AddKey(const CKey &key) {
-    return AddKeyPubKey(key, key.GetPubKey());
-}
-
-bool CBasicKeyStore::AddKeyPubKey(const CKey& key, const CPubKey &pubkey)
+bool CBasicKeyStore::AddKey(const CKey& key)
 {
-    LOCK(cs_KeyStore);
-    mapKeys[pubkey.GetID()] = key;
+    bool fCompressed = false;
+    CSecret secret = key.GetSecret(fCompressed);
+    {
+        LOCK(cs_KeyStore);
+        mapKeys[key.GetPubKey().GetID()] = make_pair(secret, fCompressed);
+    }
     return true;
 }
 
 bool CBasicKeyStore::AddCScript(const CScript& redeemScript)
 {
-    LOCK(cs_KeyStore);
-    mapScripts[redeemScript.GetID()] = redeemScript;
+    {
+        LOCK(cs_KeyStore);
+        mapScripts[redeemScript.GetID()] = redeemScript;
+    }
     return true;
 }
 
 bool CBasicKeyStore::HaveCScript(const CScriptID& hash) const
 {
-    LOCK(cs_KeyStore);
-    return mapScripts.count(hash) > 0;
+    bool result;
+    {
+        LOCK(cs_KeyStore);
+        result = (mapScripts.count(hash) > 0);
+    }
+    return result;
 }
+
 
 bool CBasicKeyStore::GetCScript(const CScriptID &hash, CScript& redeemScriptOut) const
 {
-    LOCK(cs_KeyStore);
-    ScriptMap::const_iterator mi = mapScripts.find(hash);
-    if (mi != mapScripts.end())
     {
-        redeemScriptOut = (*mi).second;
-        return true;
+        LOCK(cs_KeyStore);
+        ScriptMap::const_iterator mi = mapScripts.find(hash);
+        if (mi != mapScripts.end())
+        {
+            redeemScriptOut = (*mi).second;
+            return true;
+        }
     }
     return false;
 }
 
 bool CCryptoKeyStore::SetCrypted()
 {
-    LOCK(cs_KeyStore);
-    if (fUseCrypto)
-        return true;
-    if (!mapKeys.empty())
-        return false;
-    fUseCrypto = true;
+    {
+        LOCK(cs_KeyStore);
+        if (fUseCrypto)
+        {
+            return true;
+        }
+        if (!mapKeys.empty())
+        {
+            return false;
+        }
+        fUseCrypto = true;
+    }
     return true;
 }
 
 bool CCryptoKeyStore::Lock()
 {
     if (!SetCrypted())
+    {
         return false;
-
+    }
     {
         LOCK(cs_KeyStore);
         vMasterKey.clear();
+        fWalletUnlockMintOnly = false;
     }
-
     NotifyStatusChanged(this);
     return true;
 }
@@ -81,21 +101,30 @@ bool CCryptoKeyStore::Unlock(const CKeyingMaterial& vMasterKeyIn)
     {
         LOCK(cs_KeyStore);
         if (!SetCrypted())
+        {
             return false;
+        }
         CryptedKeyMap::const_iterator mi = mapCryptedKeys.begin();
         for (; mi != mapCryptedKeys.end(); ++mi)
         {
             const CPubKey &vchPubKey = (*mi).second.first;
             const std::vector<unsigned char> &vchCryptedSecret = (*mi).second.second;
-            CKeyingMaterial vchSecret;
+            CSecret vchSecret;
             if (!DecryptSecret(vMasterKeyIn, vchCryptedSecret, vchPubKey.GetHash(), vchSecret))
+            {
                 return false;
+            }
             if (vchSecret.size() != 32)
+            {
                 return false;
+            }
             CKey key;
-            key.Set(vchSecret.begin(), vchSecret.end(), vchPubKey.IsCompressed());
+            key.SetPubKey(vchPubKey);
+            key.SetSecret(vchSecret);
             if (key.GetPubKey() == vchPubKey)
+            {
                 break;
+            }
             return false;
         }
         vMasterKey = vMasterKeyIn;
@@ -104,23 +133,29 @@ bool CCryptoKeyStore::Unlock(const CKeyingMaterial& vMasterKeyIn)
     return true;
 }
 
-bool CCryptoKeyStore::AddKeyPubKey(const CKey& key, const CPubKey &pubkey)
+bool CCryptoKeyStore::AddKey(const CKey& key)
 {
     {
         LOCK(cs_KeyStore);
         if (!IsCrypted())
-            return CBasicKeyStore::AddKeyPubKey(key, pubkey);
-
+        {
+            return CBasicKeyStore::AddKey(key);
+        }
         if (IsLocked())
+        {
             return false;
-
+        }
         std::vector<unsigned char> vchCryptedSecret;
-        CKeyingMaterial vchSecret(key.begin(), key.end());
-        if (!EncryptSecret(vMasterKey, vchSecret, pubkey.GetHash(), vchCryptedSecret))
+        CPubKey vchPubKey = key.GetPubKey();
+        bool fCompressed;
+        if (!EncryptSecret(vMasterKey, key.GetSecret(fCompressed), vchPubKey.GetHash(), vchCryptedSecret))
+        {
             return false;
-
-        if (!AddCryptedKey(pubkey, vchCryptedSecret))
+        }
+        if (!AddCryptedKey(key.GetPubKey(), vchCryptedSecret))
+        {
             return false;
+        }
     }
     return true;
 }
@@ -131,8 +166,9 @@ bool CCryptoKeyStore::AddCryptedKey(const CPubKey &vchPubKey, const std::vector<
     {
         LOCK(cs_KeyStore);
         if (!SetCrypted())
+        {
             return false;
-
+        }
         mapCryptedKeys[vchPubKey.GetID()] = make_pair(vchPubKey, vchCryptedSecret);
     }
     return true;
@@ -143,19 +179,25 @@ bool CCryptoKeyStore::GetKey(const CKeyID &address, CKey& keyOut) const
     {
         LOCK(cs_KeyStore);
         if (!IsCrypted())
+        {
             return CBasicKeyStore::GetKey(address, keyOut);
-
+        }
         CryptedKeyMap::const_iterator mi = mapCryptedKeys.find(address);
         if (mi != mapCryptedKeys.end())
         {
             const CPubKey &vchPubKey = (*mi).second.first;
             const std::vector<unsigned char> &vchCryptedSecret = (*mi).second.second;
-            CKeyingMaterial vchSecret;
+            CSecret vchSecret;
             if (!DecryptSecret(vMasterKey, vchCryptedSecret, vchPubKey.GetHash(), vchSecret))
+            {
                 return false;
+            }
             if (vchSecret.size() != 32)
+            {
                 return false;
-            keyOut.Set(vchSecret.begin(), vchSecret.end(), vchPubKey.IsCompressed());
+            }
+            keyOut.SetPubKey(vchPubKey);
+            keyOut.SetSecret(vchSecret);
             return true;
         }
     }
@@ -167,8 +209,9 @@ bool CCryptoKeyStore::GetPubKey(const CKeyID &address, CPubKey& vchPubKeyOut) co
     {
         LOCK(cs_KeyStore);
         if (!IsCrypted())
+        {
             return CKeyStore::GetPubKey(address, vchPubKeyOut);
-
+        }
         CryptedKeyMap::const_iterator mi = mapCryptedKeys.find(address);
         if (mi != mapCryptedKeys.end())
         {
@@ -184,19 +227,28 @@ bool CCryptoKeyStore::EncryptKeys(CKeyingMaterial& vMasterKeyIn)
     {
         LOCK(cs_KeyStore);
         if (!mapCryptedKeys.empty() || IsCrypted())
+        {
             return false;
-
+        }
         fUseCrypto = true;
         BOOST_FOREACH (KeyMap::value_type& mKey, mapKeys)
         {
-            const CKey &key = mKey.second;
-            CPubKey vchPubKey = key.GetPubKey();
-            CKeyingMaterial vchSecret(key.begin(), key.end());
+            CKey key;
+            if (!key.SetSecret(mKey.second.first, mKey.second.second))
+            {
+                return false;
+            }
+            const CPubKey vchPubKey = key.GetPubKey();
             std::vector<unsigned char> vchCryptedSecret;
-            if (!EncryptSecret(vMasterKeyIn, vchSecret, vchPubKey.GetHash(), vchCryptedSecret))
+            bool fCompressed;
+            if (!EncryptSecret(vMasterKeyIn, key.GetSecret(fCompressed), vchPubKey.GetHash(), vchCryptedSecret))
+            {
                 return false;
+            }
             if (!AddCryptedKey(vchPubKey, vchCryptedSecret))
+            {
                 return false;
+            }
         }
         mapKeys.clear();
     }

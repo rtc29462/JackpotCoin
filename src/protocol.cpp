@@ -6,7 +6,6 @@
 #include "protocol.h"
 #include "util.h"
 #include "netbase.h"
-#include "main.h"
 
 #ifndef WIN32
 # include <arpa/inet.h>
@@ -17,7 +16,6 @@ static const char* ppszTypeName[] =
     "ERROR",
     "tx",
     "block",
-    "index block"
 };
 
 CMessageHeader::CMessageHeader()
@@ -39,7 +37,7 @@ CMessageHeader::CMessageHeader(const char* pszCommand, unsigned int nMessageSize
 
 std::string CMessageHeader::GetCommand() const
 {
-    if (pchCommand[COMMAND_SIZE - 1] == 0)
+    if (pchCommand[COMMAND_SIZE-1] == 0)
         return std::string(pchCommand, pchCommand + strlen(pchCommand));
     else
         return std::string(pchCommand, pchCommand + COMMAND_SIZE);
@@ -142,7 +140,7 @@ const char* CInv::GetCommand() const
 
 std::string CInv::ToString() const
 {
-    return strprintf("%s %s", GetCommand(), hash.ToString().c_str());
+    return strprintf("%s %s", GetCommand(), hash.ToString().substr(0,20).c_str());
 }
 
 void CInv::print() const

@@ -7,9 +7,7 @@
 #include "optionsmodel.h"
 
 #include <QPixmap>
-#if QT_VERSION < 0x050000
 #include <QUrl>
-#endif
 
 #include <qrencode.h>
 
@@ -46,7 +44,9 @@ void QRCodeDialog::setModel(OptionsModel *model)
     this->model = model;
 
     if (model)
+    {
         connect(model, SIGNAL(displayUnitChanged(int)), this, SLOT(updateDisplayUnit()));
+    }
     // update the display unit, to not use the default ("BTC")
     updateDisplayUnit();
 }
@@ -149,15 +149,19 @@ void QRCodeDialog::on_btnSaveAs_clicked()
 {
     QString fn = GUIUtil::getSaveFileName(this, tr("Save QR Code"), QString(), tr("PNG Images (*.png)"));
     if (!fn.isEmpty())
+    {
         myImage.scaled(EXPORT_IMAGE_SIZE, EXPORT_IMAGE_SIZE).save(fn);
+    }
 }
 
 
 void QRCodeDialog::on_chkReqPayment_toggled(bool fChecked)
 {
     if (!fChecked)
+    {
         // if chkReqPayment is not active, don't display lnReqAmount as invalid
         ui->lnReqAmount->setValid(true);
+    }
     genCode();
 }
 

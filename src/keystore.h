@@ -21,22 +21,30 @@ public:
     virtual ~CKeyStore() {}
 
     // Add a key to the store.
-    virtual bool AddKeyPubKey(const CKey &key, const CPubKey &pubkey) = 0;
-    virtual bool AddKey(const CKey &key);
+    virtual bool AddKey(const CKey& key) =0;
 
     // Check whether a key corresponding to a given address is present in the store.
-    virtual bool HaveKey(const CKeyID &address) const = 0;
-    virtual bool GetKey(const CKeyID &address, CKey& keyOut) const = 0;
-    virtual void GetKeys(std::set<CKeyID> &setAddress) const = 0;
+    virtual bool HaveKey(const CKeyID &address) const =0;
+    virtual bool GetKey(const CKeyID &address, CKey& keyOut) const =0;
+    virtual void GetKeys(std::set<CKeyID> &setAddress) const =0;
     virtual bool GetPubKey(const CKeyID &address, CPubKey& vchPubKeyOut) const;
 
     // Support for BIP 0013 : see https://en.bitcoin.it/wiki/BIP_0013
-    virtual bool AddCScript(const CScript& redeemScript) = 0;
-    virtual bool HaveCScript(const CScriptID &hash) const = 0;
-    virtual bool GetCScript(const CScriptID &hash, CScript& redeemScriptOut) const = 0;
+    virtual bool AddCScript(const CScript& redeemScript) =0;
+    virtual bool HaveCScript(const CScriptID &hash) const =0;
+    virtual bool GetCScript(const CScriptID &hash, CScript& redeemScriptOut) const =0;
+
+    virtual bool GetSecret(const CKeyID &address, CSecret& vchSecret, bool &fCompressed) const
+    {
+        CKey key;
+        if (!GetKey(address, key))
+            return false;
+        vchSecret = key.GetSecret(fCompressed);
+        return true;
+    }
 };
 
-typedef std::map<CKeyID, CKey> KeyMap;
+typedef std::map<CKeyID, std::pair<CSecret, bool> > KeyMap;
 typedef std::map<CScriptID, CScript > ScriptMap;
 
 /** Basic key store, that keeps keys in an address->secret map */
@@ -47,7 +55,7 @@ protected:
     ScriptMap mapScripts;
 
 public:
-    bool AddKeyPubKey(const CKey& key, const CPubKey &pubkey);
+    bool AddKey(const CKey& key);
     bool HaveKey(const CKeyID &address) const
     {
         bool result;
@@ -77,7 +85,8 @@ public:
             KeyMap::const_iterator mi = mapKeys.find(address);
             if (mi != mapKeys.end())
             {
-                keyOut = mi->second;
+                keyOut.Reset();
+                keyOut.SetSecret((*mi).second.first, (*mi).second.second);
                 return true;
             }
         }
@@ -137,8 +146,7 @@ public:
     bool Lock();
 
     virtual bool AddCryptedKey(const CPubKey &vchPubKey, const std::vector<unsigned char> &vchCryptedSecret);
-    bool AddKeyPubKey(const CKey& key, const CPubKey &pubkey);
-
+    bool AddKey(const CKey& key);
     bool HaveKey(const CKeyID &address) const
     {
         {

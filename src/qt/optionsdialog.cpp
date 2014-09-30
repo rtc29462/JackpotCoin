@@ -1,7 +1,3 @@
-// Copyright (c) 2011-2013 The Bitcoin developers
-// Distributed under the MIT/X11 software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
 #include "optionsdialog.h"
 #include "ui_optionsdialog.h"
 
@@ -14,6 +10,8 @@
 #include <QIntValidator>
 #include <QLocale>
 #include <QMessageBox>
+#include <QRegExp>
+#include <QRegExpValidator>
 
 OptionsDialog::OptionsDialog(QWidget *parent) :
     QDialog(parent),
@@ -47,37 +45,36 @@ OptionsDialog::OptionsDialog(QWidget *parent) :
 
     ui->proxyIp->installEventFilter(this);
 
-    /* Window elements init */
+    // Window elements init
 #ifdef Q_OS_MAC
-    /* remove Window tab on Mac */
-    ui->tabWidget->removeTab(ui->tabWidget->indexOf(ui->tabWindow));
+    ui->tabWindow->setVisible(false);
 #endif
 
-    /* Display elements init */
+    // Display elements init
     QDir translations(":translations");
     ui->lang->addItem(QString("(") + tr("default") + QString(")"), QVariant(""));
     foreach (const QString &langStr, translations.entryList())
     {
         QLocale locale(langStr);
 
-        /** check if the locale name consists of 2 parts (language_country) */
+        // check if the locale name consists of 2 parts (language_country)
         if(langStr.contains("_"))
         {
 #if QT_VERSION >= 0x040800
-            /** display language strings as "native language - native country (locale name)", e.g. "Deutsch - Deutschland (de)" */
+            // display language strings as "native language - native country (locale name)", e.g. "Deutsch - Deutschland (de)"
             ui->lang->addItem(locale.nativeLanguageName() + QString(" - ") + locale.nativeCountryName() + QString(" (") + langStr + QString(")"), QVariant(langStr));
 #else
-            /** display language strings as "language - country (locale name)", e.g. "German - Germany (de)" */
+            // display language strings as "language - country (locale name)", e.g. "German - Germany (de)"
             ui->lang->addItem(QLocale::languageToString(locale.language()) + QString(" - ") + QLocale::countryToString(locale.country()) + QString(" (") + langStr + QString(")"), QVariant(langStr));
 #endif
         }
         else
         {
 #if QT_VERSION >= 0x040800
-            /** display language strings as "native language (locale name)", e.g. "Deutsch (de)" */
+            // display language strings as "native language (locale name)", e.g. "Deutsch (de)"
             ui->lang->addItem(locale.nativeLanguageName() + QString(" (") + langStr + QString(")"), QVariant(langStr));
 #else
-            /** display language strings as "language (locale name)", e.g. "German (de)" */
+            // display language strings as "language (locale name)", e.g. "German (de)"
             ui->lang->addItem(QLocale::languageToString(locale.language()) + QString(" (") + langStr + QString(")"), QVariant(langStr));
 #endif
         }
@@ -85,16 +82,16 @@ OptionsDialog::OptionsDialog(QWidget *parent) :
 
     ui->unit->setModel(new BitcoinUnits(this));
 
-    /* Widget-to-option mapper */
+    // Widget-to-option mapper
     mapper = new MonitoredDataMapper(this);
     mapper->setSubmitPolicy(QDataWidgetMapper::ManualSubmit);
     mapper->setOrientation(Qt::Vertical);
 
-    /* enable apply button when data modified */
+    // enable apply button when data modified
     connect(mapper, SIGNAL(viewModified()), this, SLOT(enableApplyButton()));
-    /* disable apply button when new data loaded */
+    // disable apply button when new data loaded
     connect(mapper, SIGNAL(currentIndexChanged(int)), this, SLOT(disableApplyButton()));
-    /* setup/change UI elements when proxy IP is invalid/valid */
+    // setup/change UI elements when proxy IP is invalid/valid
     connect(this, SIGNAL(proxyIpValid(QValidatedLineEdit *, bool)), this, SLOT(handleProxyIpValid(QValidatedLineEdit *, bool)));
 }
 
@@ -117,40 +114,41 @@ void OptionsDialog::setModel(OptionsModel *model)
         mapper->toFirst();
     }
 
-    /* update the display unit, to not use the default ("BTC") */
+    // update the display unit, to not use the default ("BTC")
     updateDisplayUnit();
 
-    /* warn only when language selection changes by user action (placed here so init via mapper doesn't trigger this) */
+    // warn only when language selection changes by user action (placed here so init via mapper doesn't trigger this)
     connect(ui->lang, SIGNAL(valueChanged()), this, SLOT(showRestartWarning_Lang()));
 
-    /* disable apply button after settings are loaded as there is nothing to save */
+    // disable apply button after settings are loaded as there is nothing to save
     disableApplyButton();
 }
 
 
 void OptionsDialog::setMapper()
 {
-    /* Main */
+    // Main
     mapper->addMapping(ui->bitcoinAtStartup, OptionsModel::StartAtStartup);
 
-    /* Wallet */
+    // Wallet
     mapper->addMapping(ui->transactionFee, OptionsModel::Fee);
     mapper->addMapping(ui->reserveBalance, OptionsModel::ReserveBalance);
+    mapper->addMapping(ui->detachDatabases, OptionsModel::DetachDatabases);
 
-    /* Network */
+    // Network
     mapper->addMapping(ui->mapPortUpnp, OptionsModel::MapPortUPnP);
     mapper->addMapping(ui->connectSocks, OptionsModel::ProxyUse);
     mapper->addMapping(ui->proxyIp, OptionsModel::ProxyIP);
     mapper->addMapping(ui->proxyPort, OptionsModel::ProxyPort);
     mapper->addMapping(ui->socksVersion, OptionsModel::ProxySocksVersion);
 
-    /* Window */
+    // Window
 #ifndef Q_OS_MAC
     mapper->addMapping(ui->minimizeToTray, OptionsModel::MinimizeToTray);
     mapper->addMapping(ui->minimizeOnClose, OptionsModel::MinimizeOnClose);
 #endif
 
-    /* Display */
+    // Display
     mapper->addMapping(ui->lang, OptionsModel::Language);
     mapper->addMapping(ui->unit, OptionsModel::DisplayUnit);
     mapper->addMapping(ui->displayAddresses, OptionsModel::DisplayAddresses);
@@ -176,9 +174,11 @@ void OptionsDialog::disableApplyButton()
 
 void OptionsDialog::enableSaveButtons()
 {
-    /* prevent enabling of the save buttons when data modified, if there is an invalid proxy address present */
+    // prevent enabling of the save buttons when data modified, if there is an invalid proxy address present
     if (fProxyIpValid)
+    {
         setSaveButtonState(true);
+    }
 }
 
 
@@ -194,32 +194,6 @@ void OptionsDialog::setSaveButtonState(bool fState)
     ui->okButton->setEnabled(fState);
 }
 
-void OptionsDialog::on_resetButton_clicked()
-{
-    if (model)
-    {
-        // confirmation dialog
-        QMessageBox::StandardButton btnRetVal = QMessageBox::question(this, tr("Confirm options reset"),
-            tr("Some settings may require a client restart to take effect.") + "<br><br>" + tr("Do you want to proceed?"),
-            QMessageBox::Yes | QMessageBox::Cancel, QMessageBox::Cancel);
-
-        if(btnRetVal == QMessageBox::Cancel)
-            return;
-
-        disableApplyButton();
-
-        /* disable restart warning messages display */
-        fRestartWarningDisplayed_Lang = fRestartWarningDisplayed_Proxy = true;
-
-        /* reset all options and save the default values (QSettings) */
-        model->Reset();
-        mapper->toFirst();
-        mapper->submit();
-
-        /* re-enable restart warning messages display */
-        fRestartWarningDisplayed_Lang = fRestartWarningDisplayed_Proxy = false;
-    }
-}
 
 void OptionsDialog::on_okButton_clicked()
 {
@@ -255,7 +229,7 @@ void OptionsDialog::showRestartWarning_Lang()
 {
     if (!fRestartWarningDisplayed_Lang)
     {
-        QMessageBox::warning(this, tr("Warning"), tr("This setting will take effect after restartin."), QMessageBox::Ok);
+        QMessageBox::warning(this, tr("Warning"), tr("This setting will take effect after restarting."), QMessageBox::Ok);
         fRestartWarningDisplayed_Lang = true;
     }
 }
@@ -265,7 +239,7 @@ void OptionsDialog::updateDisplayUnit()
 {
     if(model)
     {
-        /* Update transactionFee with the current unit */
+        // Update transactionFee with the current unit
         ui->transactionFee->setDisplayUnit(model->getDisplayUnit());
     }
 }
@@ -298,7 +272,7 @@ bool OptionsDialog::eventFilter(QObject *object, QEvent *event)
         if (object == ui->proxyIp)
         {
             CService addr;
-            /* Check proxyIp for a valid IPv4/IPv6 address and emit the proxyIpValid signal */
+            // Check proxyIp for a valid IPv4/IPv6 address and emit the proxyIpValid signal
             emit proxyIpValid(ui->proxyIp, LookupNumeric(ui->proxyIp->text().toStdString().c_str(), addr));
         }
     }

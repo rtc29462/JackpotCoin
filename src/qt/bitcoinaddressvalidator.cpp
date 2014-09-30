@@ -1,7 +1,3 @@
-// Copyright (c) 2011-2013 The Bitcoin developers
-// Distributed under the MIT/X11 software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
 #include "bitcoinaddressvalidator.h"
 
 /* Base58 characters are:
@@ -44,12 +40,18 @@ QValidator::State BitcoinAddressValidator::validate(QString &input, int &pos) co
         }
         // Remove whitespace
         if(ch.isSpace())
+        {
             removeChar = true;
+        }
         // To next character
         if(removeChar)
+        {
             input.remove(idx, 1);
+        }
         else
+        {
             ++idx;
+        }
     }
 
     // Validation

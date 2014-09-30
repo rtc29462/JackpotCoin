@@ -1,7 +1,3 @@
-// Copyright (c) 2011-2013 The Bitcoin developers
-// Distributed under the MIT/X11 software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
 #include "askpassphrasedialog.h"
 #include "ui_askpassphrasedialog.h"
 
@@ -31,7 +27,8 @@ AskPassphraseDialog::AskPassphraseDialog(Mode mode, QWidget *parent) :
     ui->passEdit2->installEventFilter(this);
     ui->passEdit3->installEventFilter(this);
 
-    // Hide staking option
+    // Unlock for mining only
+    ui->stakingCheckBox->setChecked(fWalletUnlockMintOnly);
     ui->stakingCheckBox->hide();
 
     switch(mode)
@@ -43,16 +40,9 @@ AskPassphraseDialog::AskPassphraseDialog(Mode mode, QWidget *parent) :
            setWindowTitle(tr("Encrypt wallet"));
            break;
       case UnlockMint:
-           ui->stakingCheckBox->setChecked(fWalletUnlockMintOnly);
-           ui->stakingCheckBox->show();
-           ui->warningLabel->setText(tr("This operation needs your wallet passphrase to unlock the wallet. <br/> Note : if check 'Unlock for Stake Minting Only', it will unlock wallet for Stake Minting only."));
-           ui->passLabel2->hide();
-           ui->passEdit2->hide();
-           ui->passLabel3->hide();
-           ui->passEdit3->hide();
-           setWindowTitle(tr("Unlock wallet"));
-           break;     
       case Unlock:
+           ui->stakingCheckBox->setChecked(true);
+           ui->stakingCheckBox->show();
            ui->warningLabel->setText(tr("This operation needs your wallet passphrase to unlock the wallet."));
            ui->passLabel2->hide();
            ui->passEdit2->hide();
@@ -99,9 +89,13 @@ void AskPassphraseDialog::setModel(WalletModel *model)
 
 void AskPassphraseDialog::accept()
 {
-    SecureString oldpass, newpass1, newpass2;
     if (!model)
+    {
         return;
+    }
+
+    SecureString oldpass, newpass1, newpass2;
+
     oldpass.reserve(MAX_PASSPHRASE_SIZE);
     newpass1.reserve(MAX_PASSPHRASE_SIZE);
     newpass2.reserve(MAX_PASSPHRASE_SIZE);
@@ -113,7 +107,8 @@ void AskPassphraseDialog::accept()
 
     switch (mode)
     {
-      case Encrypt: {
+      case Encrypt: 
+      {
            if(newpass1.empty() || newpass2.empty())
            {
                // Cannot encrypt with empty passphrase
@@ -133,7 +128,7 @@ void AskPassphraseDialog::accept()
                                             "<qt>" + 
                                             tr("JackpotCoin will close now to finish the encryption process. "
                                             "Remember that encrypting your wallet cannot fully protect "
-                                            "your coins from being stolen by malware infecting your computer.") +
+                                            "your coins from being stolen by malware infecting your computer.") + 
                                             "<br><br><b>" + 
                                             tr("IMPORTANT: Any previous backups you have made of your wallet file "
                                             "should be replaced with the newly generated, encrypted wallet file. "
@@ -159,7 +154,8 @@ void AskPassphraseDialog::accept()
            {
                QDialog::reject(); // Cancelled
            }
-           } break;
+      } 
+           break;
       case UnlockMint:
       case Unlock:
            if (model->setWalletLocked(false, oldpass))
@@ -219,7 +215,7 @@ void AskPassphraseDialog::textChanged()
            acceptable = !ui->passEdit2->text().isEmpty() && !ui->passEdit3->text().isEmpty();
            break;
       case UnlockMint:
-      case Unlock:      // Old passphrase x1
+      case Unlock: // Old passphrase x1
       case Decrypt:
            acceptable = !ui->passEdit1->text().isEmpty();
            break;
@@ -236,13 +232,16 @@ bool AskPassphraseDialog::event(QEvent *event)
     // Detect Caps Lock key press.
     if (event->type() == QEvent::KeyPress) {
         QKeyEvent *ke = static_cast<QKeyEvent *>(event);
-        if (ke->key() == Qt::Key_CapsLock) {
+        if (ke->key() == Qt::Key_CapsLock) 
+        {
             fCapsLock = !fCapsLock;
         }
-        if (fCapsLock) {
+        if (fCapsLock) 
+        {
             ui->capsLabel->setText(tr("Warning: The Caps Lock key is on!"));
         } 
-        else {
+        else 
+        {
             ui->capsLabel->clear();
         }
     }
@@ -252,22 +251,25 @@ bool AskPassphraseDialog::event(QEvent *event)
 
 bool AskPassphraseDialog::eventFilter(QObject *object, QEvent *event)
 {
-    /* Detect Caps Lock.
-     * There is no good OS-independent way to check a key state in Qt, but we
-     * can detect Caps Lock by checking for the following condition:
-     * Shift key is down and the result is a lower case character, or
-     * Shift key is not down and the result is an upper case character.
-     */
-    if (event->type() == QEvent::KeyPress) {
+    // Detect Caps Lock.
+    // There is no good OS-independent way to check a key state in Qt, but we
+    // can detect Caps Lock by checking for the following condition:
+    // Shift key is down and the result is a lower case character, or
+    // Shift key is not down and the result is an upper case character.
+    if (event->type() == QEvent::KeyPress) 
+    {
         QKeyEvent *ke = static_cast<QKeyEvent *>(event);
         QString str = ke->text();
         if (str.length() != 0) {
             const QChar *psz = str.unicode();
-            bool fShift = (ke->modifiers() & Qt::ShiftModifier) != 0;
-            if ((fShift && *psz >= 'a' && *psz <= 'z') || (!fShift && *psz >= 'A' && *psz <= 'Z')) {
+            bool fShift = ((ke->modifiers() & Qt::ShiftModifier) != 0);
+            if ((fShift && psz->isLower()) || (!fShift && psz->isUpper())) 
+            {
                 fCapsLock = true;
                 ui->capsLabel->setText(tr("Warning: The Caps Lock key is on!"));
-            } else if (psz->isLetter()) {
+            } 
+            else if (psz->isLetter()) 
+            {
                 fCapsLock = false;
                 ui->capsLabel->clear();
             }

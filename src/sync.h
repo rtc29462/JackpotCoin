@@ -10,36 +10,14 @@
 #include <boost/thread/locks.hpp>
 #include <boost/thread/condition_variable.hpp>
 
-#include "threadsafety.h"
 
-// Template mixin that adds -Wthread-safety locking annotations to a
-// subset of the mutex API.
-template <typename PARENT>
-class LOCKABLE AnnotatedMixin : public PARENT
-{
-public:
-    void lock() EXCLUSIVE_LOCK_FUNCTION()
-    {
-      PARENT::lock();
-    }
 
-    void unlock() UNLOCK_FUNCTION()
-    {
-      PARENT::unlock();
-    }
-
-    bool try_lock() EXCLUSIVE_TRYLOCK_FUNCTION(true)
-    {
-      return PARENT::try_lock();
-    }
-};
 
 /** Wrapped boost mutex: supports recursive locking, but no waiting  */
-// TODO: We should move away from using the recursive lock by default.
-typedef AnnotatedMixin<boost::recursive_mutex> CCriticalSection;
+typedef boost::recursive_mutex CCriticalSection;
 
 /** Wrapped boost mutex: supports waiting but not recursive locking */
-typedef AnnotatedMixin<boost::mutex> CWaitableCriticalSection;
+typedef boost::mutex CWaitableCriticalSection;
 
 #ifdef DEBUG_LOCKORDER
 void EnterCritical(const char* pszName, const char* pszFile, int nLine, void* cs, bool fTry = false);
@@ -57,12 +35,14 @@ void PrintLockContention(const char* pszName, const char* pszFile, int nLine);
 template<typename Mutex>
 class CMutexLock
 {
-
 private:
     boost::unique_lock<Mutex> lock;
+public:
 
     void Enter(const char* pszName, const char* pszFile, int nLine)
     {
+        if (!lock.owns_lock())
+        {
             EnterCritical(pszName, pszFile, nLine, (void*)(lock.mutex()));
 #ifdef DEBUG_LOCKCONTENTION
             if (!lock.try_lock())
@@ -74,17 +54,29 @@ private:
             }
 #endif
         }
+    }
+
+    void Leave()
+    {
+        if (lock.owns_lock())
+        {
+            lock.unlock();
+            LeaveCritical();
+        }
+    }
 
     bool TryEnter(const char* pszName, const char* pszFile, int nLine)
     {
+        if (!lock.owns_lock())
+        {
             EnterCritical(pszName, pszFile, nLine, (void*)(lock.mutex()), true);
             lock.try_lock();
             if (!lock.owns_lock())
                 LeaveCritical();
+        }
         return lock.owns_lock();
     }
 
-public:
     CMutexLock(Mutex& mutexIn, const char* pszName, const char* pszFile, int nLine, bool fTry = false) : lock(mutexIn, boost::defer_lock)
     {
         if (fTry)
@@ -102,6 +94,11 @@ public:
     operator bool()
     {
         return lock.owns_lock();
+    }
+
+    boost::unique_lock<Mutex> &GetLock()
+    {
+        return lock;
     }
 };
 

@@ -3,6 +3,8 @@
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+
+
 #ifndef BITCOIN_UINT256_H
 #define BITCOIN_UINT256_H
 
@@ -29,7 +31,7 @@ class base_uint
 {
 protected:
     enum { WIDTH=BITS/32 };
-    unsigned int pn[WIDTH];
+    uint32_t pn[WIDTH];
 
 public:
 
@@ -295,13 +297,11 @@ public:
         return (!(a == b));
     }
 
-    unsigned int Get32(int n=0) {
-        return ( pn[n] );
-    }
-
-    char Get8(int n = 0) {
-        char * buf = (char *)(&pn[0]);
-        return buf[n];
+    unsigned int GetUInt32(const char pos) {
+        return ( (unsigned) pn[pos + 0x00] <<  0 |
+                 (unsigned) pn[pos + 0x01] <<  8 |
+                 (unsigned) pn[pos + 0x02] << 16 |
+                 (unsigned) pn[pos + 0x03] << 24 );
     }
 
     std::string GetHex() const
@@ -651,6 +651,8 @@ inline const uint256 operator-(const uint256& a, const uint256& b)      { return
 
 
 
+
+
 //////////////////////////////////////////////////////////////////////////////
 //
 // uint512
@@ -769,6 +771,8 @@ inline const uint512 operator&(const uint512& a, const uint512& b)      { return
 inline const uint512 operator|(const uint512& a, const uint512& b)      { return (base_uint512)a |  (base_uint512)b; }
 inline const uint512 operator+(const uint512& a, const uint512& b)      { return (base_uint512)a +  (base_uint512)b; }
 inline const uint512 operator-(const uint512& a, const uint512& b)      { return (base_uint512)a -  (base_uint512)b; }
+
+
 
 #ifdef TEST_UINT256
 

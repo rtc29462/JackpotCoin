@@ -95,7 +95,7 @@
         <string extracomment="Check this option if want to ulock wallet for PoS mining only"/>
        </property>
        <property name="text">
-        <string>Unlock for Stake Minting Only</string>
+        <string>Unlock for PoS mining only</string>
        </property>
       </widget>
      </item>
