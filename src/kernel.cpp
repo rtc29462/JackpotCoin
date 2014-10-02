@@ -391,7 +391,7 @@ bool CheckProofOfStake(const CTransaction& tx, unsigned int nBits, uint256& hash
        return error("CheckProofOfStake() : read block failed");  
 
     // Verify signature
-    if (!VerifySignature(txPrev, tx, 0, 0))
+    if (!VerifySignature(txPrev, tx, 0, SCRIPT_VERIFY_P2SH | SCRIPT_VERIFY_STRICTENC, 0))
         return error("CheckProofOfStake() : VerifySignature failed on coinstake %s", tx.GetHash().ToString().c_str());
 
     // Check Stake Kernel Hash 

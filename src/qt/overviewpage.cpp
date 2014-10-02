@@ -20,7 +20,7 @@
 #define DECORATION_SIZE 64
 #define NUM_ITEMS 8
 
-extern int nJackpotValue; 
+extern int nJackpotPoW; 
 extern bool fWalletUnlockMintOnly;
 
 class TxViewDelegate : public QAbstractItemDelegate
@@ -148,8 +148,8 @@ OverviewPage::~OverviewPage()
 
 void OverviewPage::setJackpot() 
 {
-     currentJackpot = (qint64) nJackpotValue;
-     ui->labelCurrentJackpot->setText(QString("JackPot   ") + QString::number(nJackpotValue) + QString(" JPC"));
+     currentJackpot = (qint64) nJackpotPoW;
+     ui->labelCurrentJackpot->setText(QString("JackPot   ") + QString::number(currentJackpot) + QString(" JPC"));
 }
 
 

@@ -166,7 +166,7 @@ Value getcurrentjackpot(const Array& params, bool fHelp)
             "Returns the current jackpot size.");
 
 	CBlockIndex* pblockindex = FindBlockByHeight((int)nBestHeight);
-    return (boost::int64_t)GetCurrentJackpotSize(pblockindex);
+    return (boost::int64_t)GetPoWJackpot(pblockindex);
 }
 
 Value gethashespersec(const Array& params, bool fHelp)

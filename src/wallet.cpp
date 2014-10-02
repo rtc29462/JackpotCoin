@@ -543,10 +543,12 @@ bool CWallet::AddToWalletIfInvolvingMe(const uint256 &hash, const CTransaction& 
     return false;
 }
 
+
 bool CWallet::AddToWalletIfInvolvingMe(const CTransaction& tx, const CBlock* pblock, bool fUpdate)
 {
     return AddToWalletIfInvolvingMe(tx.GetHash(), tx, pblock, fUpdate);
 }
+
 
 bool CWallet::EraseFromWallet(uint256 hash)
 {
@@ -576,6 +578,7 @@ bool CWallet::IsMine(const CTxIn &txin) const
     }
     return false;
 }
+
 
 int64 CWallet::GetDebit(const CTxIn &txin) const
 {
@@ -660,6 +663,7 @@ int CWalletTx::GetRequestCount() const
     }
     return nRequests;
 }
+
 
 void CWalletTx::GetAmounts(list<pair<CTxDestination, int64> >& listReceived,
                            list<pair<CTxDestination, int64> >& listSent, int64& nFee, string& strSentAccount) const
@@ -817,6 +821,7 @@ void CWalletTx::AddSupportingTransactions()
     reverse(vtxPrev.begin(), vtxPrev.end());
 }
 
+
 bool CWalletTx::WriteToDisk()
 {
     return CWalletDB(pwallet->strWalletFile).WriteTx(GetHash(), *this);
@@ -846,6 +851,7 @@ int CWallet::ScanForWalletTransactions(CBlockIndex* pindexStart, bool fUpdate)
     }
     return ret;
 }
+
 
 void CWallet::ReacceptWalletTransactions()
 {
@@ -901,6 +907,7 @@ void CWallet::ReacceptWalletTransactions()
     }
 }
 
+
 void CWalletTx::RelayWalletTransaction()
 {
     BOOST_FOREACH (const CMerkleTx& tx, vtxPrev)
@@ -921,6 +928,7 @@ void CWalletTx::RelayWalletTransaction()
         }
     }
 }
+
 
 void CWallet::ResendWalletTransactions()
 {
@@ -1471,7 +1479,7 @@ bool CWallet::GetStakeWeight(const CKeyStore& keystore, uint64& nMinWeight, uint
 
 
 // Create coin stake transaction
-bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int64 nSearchInterval, CTransaction& txNew)
+bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int64 nSearchInterval, CTransaction& txNew, unsigned int& nBet)
 {
 
     // Coin Split Transaction Limit 
@@ -1489,7 +1497,7 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
 
 	const CBlockIndex* pIndex0 = GetLastBlockIndex(pindexBest, false);
 	if (pIndex0->pprev)
-		nStakeCombineThreshold = GetProofOfWorkReward(pIndex0->nHeight, MIN_TX_FEE, pIndex0->pprev);
+		nStakeCombineThreshold = GetPoWReward(pIndex0->pprev, pIndex0->nHeight, MIN_TX_FEE);
 
     CBigNum bnTargetPerCoinDay;
     bnTargetPerCoinDay.SetCompact(nBits);
@@ -1653,29 +1661,39 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
         }
     }
     
-    // Calculate coin age reward
+    // Calculate coin age reward with user bet
+    uint64 nReward = 0;
     {
         uint64 nCoinAge;
         if (!txNew.GetCoinAge(nCoinAge))
             return error("CreateCoinStake() : failed to calculate coin age");
-        nCredit += GetProofOfStakeReward(nCoinAge, nBits, txNew.nTime, pindexBest, true);
+        nReward = GetPoSReward(pindexBest, nCoinAge, true);
     }
     
     // Sign transaction 
     int64 nMinFee = 0;
+    int64 nMaxBet = (int64)(max(0, min(100, (int)nBet))) * COIN;
     while (true)
     {
+
+        int64 nNetReward = (nReward / COIN) * COIN;
+        if (nMaxBet > nNetReward)
+            nMaxBet = nNetReward;
+        nBet = nMaxBet / COIN;
+
+        int64 nNetCredit = nCredit + nReward - nMaxBet - nMinFee;
+        if (nNetCredit < MIN_TX_FEE) 
+           return error("CreateCoinStake() : too small total coins");
+
         // Set output amount
         if (txNew.vout.size() == 3)
         {
-            // the output has splited to two blocks 
-            txNew.vout[1].nValue = ((nCredit - nMinFee) / 2 / CENT) * CENT;
-            txNew.vout[2].nValue = nCredit - nMinFee - txNew.vout[1].nValue;
+            txNew.vout[1].nValue = (nNetCredit / 2 / CENT) * CENT;
+            txNew.vout[2].nValue = nNetCredit - txNew.vout[1].nValue;
         }
         else
         {
-            // the output has not been split
-            txNew.vout[1].nValue = nCredit - nMinFee;
+            txNew.vout[1].nValue = nNetCredit;
         }
 
         // Sign each transaction block
@@ -1683,9 +1701,7 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
         BOOST_FOREACH (const CWalletTx* pcoin, vwtxPrev)
         {
             if (!SignSignature(*this, *pcoin, txNew, nIn++))
-            {
                 return error("CreateCoinStake() : failed to sign coinstake");
-            }
         }
 
         // Limit size
@@ -1704,9 +1720,7 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
         else
         {
             if (fDebugHigh)
-            {
                 printf("CreateCoinStake() : fee for coinstake %s\n", FormatMoney(nMinFee).c_str());
-            }
             break;
         }
     }

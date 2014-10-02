@@ -204,7 +204,7 @@ inline uint256 HashSHA3(const T1 pbegin, const unsigned int option) {
            return HashSHA3V1(ptr);
       case 8:
            return HashSHA3V2(ptr);
-      case 100:
+      case 10:
            return HashSHA3V3(ptr);
     }
     return HashSHA3V3POS(ptr);

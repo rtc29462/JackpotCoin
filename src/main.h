@@ -55,10 +55,6 @@ static const int64 MIN_TX_FEE = 1 * CENT;
 static const int64 MIN_TXOUT_AMOUNT = MIN_TX_FEE;
 /** The minimum amount for RELAY */
 static const int64 MIN_RELAY_TX_FEE = MIN_TX_FEE;
-/** The begining interest for PoS */
-static const int64 MAX_MINT_PROOF_OF_STAKE_START  = 0.001  * COIN; // 0.1% daily interest to start
-/** The ending interest for PoS */
-static const int64 MAX_MINT_PROOF_OF_STAKE_END    = 0.0001 * COIN; // 0.01% daily interest after 5 years
 
 /** HARDFROK BLOCK HEIGHT */
 static const int HARDFORK_HASH_ALGO_SWITCH_BLOCK  =    6000;       // hardfork to fix the hash algorithm
@@ -118,16 +114,16 @@ extern int64 nMinimumInputValue;
 extern int64 nReserveBalance;
 
 // PoS Jackpot
-extern int64 nJackpotPoSPot;
-extern int64 nJackpotBet;
-extern int64 nJackpotLucky;
+extern int nJackpotPoW;
+extern int nJackpotBet;     // Jackpot Bet between 0 ~ 100
+extern int nJackpotLucky;   // Lucky Number for Extra Bonus
 
 extern unsigned int nStakeMinAge;
 extern int64 nLastCoinStakeSearchInterval;
 extern std::set<std::pair<COutPoint, unsigned int> > setStakeSeen;
 
 // Minimum disk space required - used in CheckDiskSpace()
-static const uint64 nMinDiskSpace = 52428800;
+static const uint64 nMinDiskSpace = 128 * 1024 * 1024;
 
 
 class CReserveKey;
@@ -212,13 +208,14 @@ bool AbortNode(const std::string &msg);
 
 const CBlockIndex* GetLastBlockIndex(const CBlockIndex* pindex, bool fPoS);
 unsigned int GetNextTargetRequired(const CBlockIndex* pindexLast, bool fPoS);
-int64 GetProofOfWorkReward(int nHeight, int64 nFees, const CBlockIndex* pindex);
-int64 GetProofOfStakeReward(int64 nCoinAge, unsigned int nBits, unsigned int nTime, const CBlockIndex* pindex, const bool IsNewBlock);
-int CountPowDelta(CBlockIndex* pindex, int superBlock);
-int GetPowHeight(const CBlockIndex* pindex);
-int GetPosHeight(const CBlockIndex* pindex);
-int GetSpecialHeight(const CBlockIndex* pindex, bool fPoS);
-int64 GetCurrentJackpotSize(const CBlockIndex* pindex);
+int GetPoWDelta(const CBlockIndex* pindex, int superBlock);
+int GetPoWHeight(const CBlockIndex* pindex);
+int GetPoSHeight(const CBlockIndex* pindex);
+int GetHeight(const CBlockIndex* pindex, bool fPoS);
+int64 GetPoWReward(const CBlockIndex* pindex, int nHeight, int64 nFees);
+int64 GetPoSReward(const CBlockIndex* pindex, int64 nCoinAge, bool IsNewBlock);
+int64 GetPoWJackpot(const CBlockIndex* pindex);
+int64 GetPoSJackpot(const CBlockIndex* pindex);
 uint256 WantedByOrphan(const CBlock* pblockOrphan);
 void static ResendWalletTransactions();
 
@@ -778,8 +775,7 @@ public:
     // This does not modify the UTXO set. If pvChecks is not NULL, script checks are pushed onto it
     // instead of being performed inline.
     bool CheckInputs(CValidationState &state, CCoinsViewCache &view,
-                     unsigned int flags = SCRIPT_VERIFY_P2SH | SCRIPT_VERIFY_STRICTENC,                     
-                     std::vector<CScriptCheck> *pvChecks = NULL,
+                     unsigned int flags = SCRIPT_VERIFY_P2SH | SCRIPT_VERIFY_STRICTENC,
                      std::vector<CTransaction> *vtxPtr = NULL) const;
 
     // Apply the effects of this transaction on the UTXO set represented by view
@@ -1315,8 +1311,8 @@ public:
     // >=1 : this many blocks deep in the main chain
     int GetDepthInMainChain(CBlockIndex* &pindexRet) const;
     int GetDepthInMainChain() const { CBlockIndex *pindexRet; return GetDepthInMainChain(pindexRet); }
-    bool IsInMainChain() const { CBlockIndex *pindexRet; return GetDepthInMainChainINTERNAL(pindexRet) > 0; }
     int GetBlocksToMaturity() const;
+    bool IsInMainChain() const { CBlockIndex *pindexRet; return GetDepthInMainChainINTERNAL(pindexRet) > 0; }
     bool AcceptToMemoryPool(bool fCheckInputs=true);
 };
 
@@ -1441,10 +1437,7 @@ public:
     unsigned int nPoWHeight;     // Renamed from nSuperBlock
     unsigned int nOption;        // Renamed from nRoundMask 
     unsigned int nPoSHeight;     // Height of PoS
-    unsigned int nPoSPot;        // Value of Total PoS Pot
-
-    unsigned int nBet;           // User Bet
-    unsigned int nLucky;         // User Lucky Number   
+    unsigned int nPoSPot;        // Value of Total PoS Pot 
 
     CBlockHeader()
     {
@@ -1469,30 +1462,19 @@ public:
         if (nType & SER_DISK) {
             READWRITE(VARINT(nPoWHeight));
             READWRITE(VARINT(nOption));
+            if (nVersion > 4) {
+                READWRITE(VARINT(nPoSHeight));
+                READWRITE(VARINT(nPoSPot));
+            }
         }
         else 
         {
             READWRITE(nPoWHeight);
             READWRITE(nOption);
-        }
-
-        if (nVersion > 4) { 
-            if (fRead)
-            {
-                 unsigned int nOptionIn = 0;
-                 READWRITE(nOptionIn);         // Lucky|Bet|Algo  
-                 const_cast<CBlockHeader*>(this)->nLucky  = (nOptionIn >> 16);
-                 const_cast<CBlockHeader*>(this)->nBet    = (nOptionIn >>  8) & 0xFF;
-                 const_cast<CBlockHeader*>(this)->nOption = (nOptionIn & 0xFF);
+            if (nVersion > 4) {
+               READWRITE(nPoSHeight);
+               READWRITE(nPoSPot);
             }
-            else 
-            {
-                 unsigned int nOptionOut;
-                 nOptionOut = (nLucky & 0xFFFF) << 16 | (nBet & 0xFF) << 8 | (nOption & 0xFF);
-                 READWRITE(nOptionOut);
-            }
-            READWRITE(nPoSHeight);
-            READWRITE(nPoSPot);
         }
     )
 
@@ -1508,8 +1490,6 @@ public:
         nOption = 0;
         nPoSHeight = 0;
         nPoSPot = 0;
-        nBet = 0;
-        nLucky = 0;
     }
 
     bool IsNull() const
@@ -1774,7 +1754,7 @@ public:
     bool ReadFromDisk(const CBlockIndex* pindex);
 
    // Add this block to the block index, and if necessary, switch the active block chain to this
-    bool AddToBlockIndex(CValidationState &state, const CDiskBlockPos &pos, const uint256& hashPoS);
+    bool AddToBlockIndex(CValidationState &state, const CDiskBlockPos &pos, const uint256& hashPoS = uint256(0));
 
     // Context-independent validity checks
     bool CheckBlock(CValidationState &state, bool fCheckPOW=true, bool fCheckMerkleRoot=true) const;
@@ -1944,6 +1924,35 @@ public:
 
     CBlockIndex()
     {
+        SetNull();
+    }
+
+    CBlockIndex(CBlock& block)
+    {
+        SetNull();
+
+        nTx = block.vtx.size();
+
+        if (block.IsProofOfStake())
+        {
+            SetProofOfStake();
+            prevoutStake = block.vtx[1].vin[0].prevout;
+            nStakeTime = block.vtx[1].nTime;
+        }
+
+        nVersion = block.nVersion;
+        hashMerkleRoot = block.hashMerkleRoot;
+        nTime = block.nTime;
+        nBits = block.nBits;
+        nNonce = block.nNonce;
+        nPoWHeight = block.nPoWHeight;
+        nOption = block.nOption;
+        nPoSHeight = block.nPoSHeight;
+        nPoSPot = block.nPoSPot;
+    }
+
+    void SetNull()
+    {
         phashBlock = NULL;
         pprev = NULL;
         pnext = NULL;
@@ -1962,58 +1971,15 @@ public:
         hashProofOfStake = 0;
         prevoutStake.SetNull();
         nStakeTime = 0;
-
-        nVersion		= 0;
-        hashMerkleRoot	= 0;
-        nTime			= 0;
-        nBits			= 0;
-        nNonce			= 0;
-		nPoWHeight      = 0;
-        nOption         = 0;
-        nPoSHeight      = 0;
-        nPoSPot         = 0;
-    }
-
-    CBlockIndex(CBlock& block)
-    {
-        phashBlock = NULL;
-        pprev = NULL;
-        pnext = NULL;
-        nHeight = 0;
-        nFile = 0;
-        nDataPos = 0;
-        nUndoPos = 0;
-        nChainTrust = 0;
-        nTx = 0;
-        nChainTx = 0;
-        nStatus = 0;
-        nMoneySupply = 0;
-        nFlags = 0;
-        nStakeModifier = 0;
-        nStakeModifierChecksum = 0;
-        hashProofOfStake = 0;
-
-        if (block.IsProofOfStake())
-        {
-            SetProofOfStake();
-            prevoutStake = block.vtx[1].vin[0].prevout;
-            nStakeTime = block.vtx[1].nTime;
-        }
-        else
-        {
-            prevoutStake.SetNull();
-            nStakeTime = 0;
-        }
-
-        nVersion		= block.nVersion;
-        hashMerkleRoot	= block.hashMerkleRoot;
-        nTime			= block.nTime;
-        nBits			= block.nBits;
-        nNonce			= block.nNonce;
-        nPoWHeight      = block.nPoWHeight;
-        nOption         = block.nOption;
-        nPoSHeight      = block.nPoSHeight;
-        nPoSPot         = block.nPoSPot;
+        nVersion = 0;
+        hashMerkleRoot = 0;
+        nTime = 0;
+        nBits = 0;
+        nNonce = 0;
+		nPoWHeight = 0;
+        nOption = 0;
+        nPoSHeight = 0;
+        nPoSPot = 0;
     }
 
     CDiskBlockPos GetBlockPos() const {
@@ -2184,6 +2150,7 @@ struct CBlockIndexTrustComparator
 /** Used to marshal pointers into hashes for db storage. */
 class CDiskBlockIndex : public CBlockIndex
 {
+
 public:
     uint256 hashPrev;
 
@@ -2233,8 +2200,8 @@ public:
         READWRITE(nNonce);
         READWRITE(VARINT(nPoWHeight));
         READWRITE(VARINT(nOption));
-//      READWRITE(VARINT(nPoSHeight);
-//      READWRITE(VARINT(nPoSBet);
+        READWRITE(VARINT(nPoSHeight));
+        READWRITE(VARINT(nPoSPot));
 	)
 
     uint256 GetBlockHash() const

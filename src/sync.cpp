@@ -6,6 +6,7 @@
 #include "util.h"
 
 #include <boost/foreach.hpp>
+#include <boost/thread.hpp>
 
 #ifdef DEBUG_LOCKCONTENTION
 void PrintLockContention(const char* pszName, const char* pszFile, int nLine)
@@ -41,6 +42,8 @@ struct CLockLocation
         return mutexName+"  "+sourceFile+":"+itostr(sourceLine);
     }
 
+    std::string MutexName() const { return mutexName; }
+
 private:
     std::string mutexName;
     std::string sourceFile;
@@ -60,15 +63,19 @@ static void potential_deadlock_detected(const std::pair<void*, void*>& mismatch,
     printf("Previous lock order was:\n");
     BOOST_FOREACH(const PAIRTYPE(void*, CLockLocation)& i, s2)
     {
-        if (i.first == mismatch.first) printf(" (1)");
-        if (i.first == mismatch.second) printf(" (2)");
+        if (i.first == mismatch.first) 
+            printf(" (1)");
+        if (i.first == mismatch.second)
+            printf(" (2)");
         printf(" %s\n", i.second.ToString().c_str());
     }
     printf("Current lock order is:\n");
     BOOST_FOREACH(const PAIRTYPE(void*, CLockLocation)& i, s1)
     {
-        if (i.first == mismatch.first) printf(" (1)");
-        if (i.first == mismatch.second) printf(" (2)");
+        if (i.first == mismatch.first)
+            printf(" (1)");
+        if (i.first == mismatch.second)
+            printf(" (2)");
         printf(" %s\n", i.second.ToString().c_str());
     }
 }
@@ -85,7 +92,8 @@ static void push_lock(void* c, const CLockLocation& locklocation, bool fTry)
 
     if (!fTry) {
         BOOST_FOREACH(const PAIRTYPE(void*, CLockLocation)& i, (*lockstack)) {
-            if (i.first == c) break;
+            if (i.first == c)
+                break;
 
             std::pair<void*, void*> p1 = std::make_pair(i.first, c);
             if (lockorders.count(p1))
@@ -123,6 +131,23 @@ void EnterCritical(const char* pszName, const char* pszFile, int nLine, void* cs
 void LeaveCritical()
 {
     pop_lock();
+}
+
+std::string LocksHeld()
+{
+    std::string result;
+    BOOST_FOREACH (const PAIRTYPE(void*, CLockLocation) & i, *lockstack)
+        result += i.second.ToString() + std::string("\n");
+    return result;
+}
+
+void AssertLockHeldInternal(const char* pszName, const char* pszFile, int nLine, void* cs)
+{
+    BOOST_FOREACH (const PAIRTYPE(void*, CLockLocation) & i, *lockstack)
+        if (i.first == cs)
+            return;
+    fprintf(stderr, "Assertion failed: lock %s not held in %s:%i; locks held:\n%s", pszName, pszFile, nLine, LocksHeld().c_str());
+    abort();
 }
 
 #endif /* DEBUG_LOCKORDER */
