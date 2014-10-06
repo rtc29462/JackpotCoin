@@ -11,7 +11,6 @@
 #include <set>
 #include <cassert>
 #include <limits>
-#include <stdint.h>
 #include <cstring>
 #include <cstdio>
 

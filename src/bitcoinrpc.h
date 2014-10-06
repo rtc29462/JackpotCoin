@@ -226,5 +226,9 @@ extern json_spirit::Value getblockbynumber(const json_spirit::Array& params, boo
 extern json_spirit::Value getcurrentjackpot(const json_spirit::Array& params, bool fHelp);
 extern json_spirit::Value reservebalance(const json_spirit::Array& params, bool fHelp);
 
+extern json_spirit::Value setjackpotbet(const json_spirit::Array& params, bool fHelp);
+extern json_spirit::Value getjackpotbet(const json_spirit::Array& params, bool fHelp);
+extern json_spirit::Value setjackpotluckynumber(const json_spirit::Array& params, bool fHelp);
+extern json_spirit::Value getjackpotluckynumber(const json_spirit::Array& params, bool fHelp);
 
 #endif

@@ -78,6 +78,7 @@ extern bool fDiscover;
 extern uint64 nLocalServices;
 extern uint64 nLocalHostNonce;
 extern CAddrMan addrman;
+extern int nMaxConnections;
 
 extern std::vector<CNode*> vNodes;
 extern CCriticalSection cs_vNodes;
@@ -89,7 +90,6 @@ extern limitedmap<CInv, int64> mapAlreadyAskedFor;
 extern std::vector<std::string> vAddedNodes;
 extern CCriticalSection cs_vAddedNodes;
 
-extern int nMaxConnections;
 
 
 class CNodeStats
@@ -294,7 +294,7 @@ public:
     unsigned int GetTotalRecvSize()
     {
         unsigned int total = 0;
-        BOOST_FOREACH(const CNetMessage &msg, vRecvMsg) 
+        BOOST_FOREACH (const CNetMessage &msg, vRecvMsg) 
             total += msg.vRecv.size() + 24;
         return total;
     }
@@ -320,8 +320,6 @@ public:
     {
         nRefCount--;
     }
-
-
 
     void AddAddressKnown(const CAddress& addr)
     {

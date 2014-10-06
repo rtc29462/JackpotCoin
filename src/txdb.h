@@ -11,8 +11,10 @@
 /** CCoinsView backed by the LevelDB coin database (chainstate/) */
 class CCoinsViewDB : public CCoinsView
 {
+
 protected:
     CLevelDB db;
+
 public:
     CCoinsViewDB(size_t nCacheSize, bool fMemory = false, bool fWipe = false);
 
@@ -28,11 +30,14 @@ public:
 /** Access to the block database (blocks/index/) */
 class CBlockTreeDB : public CLevelDB
 {
+
 public:
     CBlockTreeDB(size_t nCacheSize, bool fMemory = false, bool fWipe = false);
+
 private:
     CBlockTreeDB(const CBlockTreeDB&);
     void operator=(const CBlockTreeDB&);
+
 public:
     bool WriteBlockIndex(const CDiskBlockIndex& blockindex);
     bool ReadBestInvalidTrust(CBigNum& bnBestInvalidTrust);
@@ -48,6 +53,7 @@ public:
     bool WriteFlag(const std::string &name, bool fValue);
     bool ReadFlag(const std::string &name, bool &fValue);
     bool LoadBlockIndexGuts();
+
 };
 
 #endif // BITCOIN_TXDB_LEVELDB_H

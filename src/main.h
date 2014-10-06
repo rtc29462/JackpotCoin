@@ -57,8 +57,8 @@ static const int64 MIN_TXOUT_AMOUNT = MIN_TX_FEE;
 static const int64 MIN_RELAY_TX_FEE = MIN_TX_FEE;
 
 /** HARDFROK BLOCK HEIGHT */
-static const int HARDFORK_HASH_ALGO_SWITCH_BLOCK  =    6000;       // hardfork to fix the hash algorithm
-static const int HARDFORK_POS_BUG_FIX             =  451000;       // hardfork to fix PoS reward calculation   
+static const int HARDFORK_HASH_ALGO_SWITCH_BLOCK  = 6000;          // hardfork to fix the hash algorithm
+static const int HARDFORK_POS_BUG_FIX             = 451000;        // hardfork to fix PoS reward calculation   
 static const int HARDFORK_ZERO_CONFIRMED_TX       = 1000000;       // hardfork to refuse zero confirmed transaction  
 static const int HARDFORK_POS_JACKPOT             = 1000000;       // hardfork to generate PoS Jackpot
 
@@ -67,9 +67,10 @@ static const int MATURITY_COINBASE                = 60;
 static const int MATURITY_TRANSACTION             = 3;
 
 /** Threshold for nLockTime: below this value it is interpreted as block number, otherwise as UNIX timestamp. */
-static const unsigned int LOCKTIME_THRESHOLD = 500000000; // Tue Nov  5 00:53:20 1985 UTC
+static const unsigned int LOCKTIME_THRESHOLD      = 500000000;     // Tue Nov  5 00:53:20 1985 UTC
+
 /** Maximum number of script-checking threads allowed */
-static const int MAX_SCRIPTCHECK_THREADS = 8;
+static const int MAX_SCRIPTCHECK_THREADS          = 8;
 
 #ifdef USE_UPNP
 static const int fHaveUPnP = true;
@@ -95,8 +96,6 @@ extern unsigned int nTransactionsUpdated;
 extern uint64 nLastBlockTx;
 extern uint64 nLastBlockSize;
 extern const std::string strMessageMagic;
-extern double dHashesPerSec;
-extern int64 nHPSTimerStart;
 extern int64 nTimeBestReceived;
 extern CCriticalSection cs_setpwalletRegistered;
 extern std::set<CWallet*> setpwalletRegistered;
@@ -113,10 +112,15 @@ extern int64 nTransactionFee;
 extern int64 nMinimumInputValue;
 extern int64 nReserveBalance;
 
-// PoS Jackpot
+// Miner 
+extern std::vector<int> vHashPerSec;
+
+// Jackpot and reward
+extern int64 nRewardPoWLast;
+extern int64 nRewardPoSLast;
 extern int nJackpotPoW;
-extern int nJackpotBet;     // Jackpot Bet between 0 ~ 100
-extern int nJackpotLucky;   // Lucky Number for Extra Bonus
+extern int nJackpotBet;                 // Jackpot Bet between 0 ~ 100
+extern int nJackpotLucky;               // Lucky Number for Extra Bonus
 
 extern unsigned int nStakeMinAge;
 extern int64 nLastCoinStakeSearchInterval;
@@ -124,7 +128,6 @@ extern std::set<std::pair<COutPoint, unsigned int> > setStakeSeen;
 
 // Minimum disk space required - used in CheckDiskSpace()
 static const uint64 nMinDiskSpace = 128 * 1024 * 1024;
-
 
 class CReserveKey;
 class CCoinsDB;
@@ -137,7 +140,7 @@ class CScriptCheck;
 class CValidationState;
 
 struct CDiskBlockPos;
-struct CBlockTemplate;
+// struct CBlockTemplate;
 
 /** Register a wallet to receive updates from core */
 void RegisterWallet(CWallet* pwalletIn);
@@ -175,9 +178,6 @@ bool SendMessages(CNode* pto, bool fSendTrickle);
 void ThreadScriptCheck();
 /** Run the miner threads */
 void GenerateBitcoins(CWallet* pwallet, bool fPoW, bool fPoS);
-/** Generate a new block, without valid proof-of-work */
-CBlockTemplate* CreateNewBlock(CWallet* pwallet, const CScript& scriptPubKeyIn, bool fPoS);
-CBlockTemplate* CreateNewBlockWithKey(CWallet* pwallet, CReserveKey& reservekey, bool fPoS);
 /** Modify the extranonce in a block */
 void IncrementExtraNonce(CBlock* pblock, CBlockIndex* pindexPrev, unsigned int& nExtraNonce);
 /** Do mining precalculation */
@@ -209,8 +209,8 @@ bool AbortNode(const std::string &msg);
 const CBlockIndex* GetLastBlockIndex(const CBlockIndex* pindex, bool fPoS);
 unsigned int GetNextTargetRequired(const CBlockIndex* pindexLast, bool fPoS);
 int GetPoWDelta(const CBlockIndex* pindex, int superBlock);
-int GetPoWHeight(const CBlockIndex* pindex);
-int GetPoSHeight(const CBlockIndex* pindex);
+int GetPowHeight(const CBlockIndex* pindex);
+int GetPosHeight(const CBlockIndex* pindex);
 int GetHeight(const CBlockIndex* pindex, bool fPoS);
 int64 GetPoWReward(const CBlockIndex* pindex, int nHeight, int64 nFees);
 int64 GetPoSReward(const CBlockIndex* pindex, int64 nCoinAge, bool IsNewBlock);
@@ -775,7 +775,7 @@ public:
     // This does not modify the UTXO set. If pvChecks is not NULL, script checks are pushed onto it
     // instead of being performed inline.
     bool CheckInputs(CValidationState &state, CCoinsViewCache &view,
-                     unsigned int flags = SCRIPT_VERIFY_P2SH | SCRIPT_VERIFY_STRICTENC,
+                     unsigned int flags = SCRIPT_VERIFY_P2SH | SCRIPT_VERIFY_STRICTENC,                     
                      std::vector<CTransaction> *vtxPtr = NULL) const;
 
     // Apply the effects of this transaction on the UTXO set represented by view
@@ -1422,7 +1422,6 @@ public:
  * in the block is a special one that creates a new coin owned by the creator
  * of the block.
  */
-
 class CBlockHeader
 {
 public:
@@ -1458,7 +1457,6 @@ public:
         READWRITE(nTime);
         READWRITE(nBits);
         READWRITE(nNonce);
-
         if (nType & SER_DISK) {
             READWRITE(VARINT(nPoWHeight));
             READWRITE(VARINT(nOption));
@@ -1510,6 +1508,7 @@ public:
     void UpdateTime(const CBlockIndex* pindexPrev);
 
 };
+
 
 
 
@@ -1599,16 +1598,16 @@ public:
     CBlockHeader GetBlockHeader() const
     {
         CBlockHeader blockheader;
-        blockheader.nVersion       = nVersion;
-        blockheader.hashPrevBlock  = hashPrevBlock;
+        blockheader.nVersion = nVersion;
+        blockheader.hashPrevBlock = hashPrevBlock;
         blockheader.hashMerkleRoot = hashMerkleRoot;
-        blockheader.nTime          = nTime;
-        blockheader.nBits          = nBits;
-        blockheader.nNonce         = nNonce;
-        blockheader.nPoWHeight     = nPoWHeight;
-        blockheader.nOption        = nOption;
-        blockheader.nPoSHeight     = nPoSHeight;
-        blockheader.nPoSPot        = nPoSPot;
+        blockheader.nTime = nTime;
+        blockheader.nBits = nBits;
+        blockheader.nNonce = nNonce;
+        blockheader.nPoWHeight = nPoWHeight;
+        blockheader.nOption = nOption;
+        blockheader.nPoSHeight = nPoSHeight;
+        blockheader.nPoSPot = nPoSPot;
         return blockheader;
     }
 
@@ -1667,7 +1666,6 @@ public:
         }
         return hash;
     }
-
 
     bool WriteToDisk(CDiskBlockPos &pos)
     {
@@ -1765,6 +1763,11 @@ public:
     bool GetCoinAge(uint64& nCoinAge) const;
     bool SignBlock(CKeyStore& keystore);
     bool CheckBlockSignature() const;
+
+    // Create New Block
+    bool Create(CWallet* pwallet, CScript& scriptPubKeyIn, bool fPoS);
+    bool CreateWithKey(CWallet* pwallet, CReserveKey& reservekey, bool fPoS);
+
 };
 
 
@@ -1927,28 +1930,28 @@ public:
         SetNull();
     }
 
-    CBlockIndex(CBlock& block)
+    CBlockIndex(CBlock* pblock)
     {
         SetNull();
 
-        nTx = block.vtx.size();
+        nTx = pblock->vtx.size();
 
-        if (block.IsProofOfStake())
+        if (pblock->IsProofOfStake())
         {
             SetProofOfStake();
-            prevoutStake = block.vtx[1].vin[0].prevout;
-            nStakeTime = block.vtx[1].nTime;
+            prevoutStake = pblock->vtx[1].vin[0].prevout;
+            nStakeTime = pblock->vtx[1].nTime;
         }
 
-        nVersion = block.nVersion;
-        hashMerkleRoot = block.hashMerkleRoot;
-        nTime = block.nTime;
-        nBits = block.nBits;
-        nNonce = block.nNonce;
-        nPoWHeight = block.nPoWHeight;
-        nOption = block.nOption;
-        nPoSHeight = block.nPoSHeight;
-        nPoSPot = block.nPoSPot;
+        nVersion = pblock->nVersion;
+        hashMerkleRoot = pblock->hashMerkleRoot;
+        nTime = pblock->nTime;
+        nBits = pblock->nBits;
+        nNonce = pblock->nNonce;
+        nPoWHeight = pblock->nPoWHeight;
+        nOption = pblock->nOption;
+        nPoSHeight = pblock->nPoSHeight;
+        nPoSPot = pblock->nPoSPot;
     }
 
     void SetNull()
@@ -1971,6 +1974,7 @@ public:
         hashProofOfStake = 0;
         prevoutStake.SetNull();
         nStakeTime = 0;
+
         nVersion = 0;
         hashMerkleRoot = 0;
         nTime = 0;
@@ -2150,7 +2154,6 @@ struct CBlockIndexTrustComparator
 /** Used to marshal pointers into hashes for db storage. */
 class CDiskBlockIndex : public CBlockIndex
 {
-
 public:
     uint256 hashPrev;
 
@@ -2583,8 +2586,6 @@ struct CBlockTemplate
 #if defined(_M_IX86) || defined(__i386__) || defined(__i386) || defined(_M_X64) || defined(__x86_64__) || defined(_M_AMD64)
 extern unsigned int cpuid_edx;
 #endif
-
-
 
 
 

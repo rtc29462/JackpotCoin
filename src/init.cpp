@@ -358,6 +358,8 @@ std::string HelpMessage()
 #endif
         "  -paytxfee=<amt>        " + _("Fee per KB to add to transactions you send") + "\n" +
         "  -mininput=<amt>        " + _("When creating transactions, ignore inputs with value less than this (default: 0.0001)") + "\n" +
+        "  -jackpotbet=<amt>      " + _("Set Bet amount for Jackpot (default: 0)") + "\n" +
+        "  -jackpotlucky=<amt>    " + _("Set Lucky Number (0, 1~15) for Jackpot (default: 0, disable)") + "\n" +
 #ifdef QT_GUI
         "  -server                " + _("Accept command line and JSON-RPC commands") + "\n" +
 #endif
@@ -572,6 +574,18 @@ bool AppInit2(boost::thread_group& threadGroup)
     if (GetBoolArg("-salvagewallet")) {
         // Rewrite just private keys: rescan to find transactions
         SoftSetBoolArg("-rescan", true);
+    }
+
+    if (mapArgs.count("-jackpotbet"))
+    {
+        nJackpotBet = GetArg("-jackpotbet", 0);
+        nJackpotBet = min(100, max(0, nJackpotBet));
+    }
+
+    if (mapArgs.count("-jackpotluckynumber"))
+    {
+        nJackpotLucky = GetArg("-jackpotluckynumber", 0);
+        nJackpotLucky = min(15, max(0, nJackpotLucky));
     }
 
     // Make sure enough file descriptors are available

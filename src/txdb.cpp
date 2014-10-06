@@ -193,9 +193,8 @@ bool CBlockTreeDB::LoadBlockIndexGuts()
     ssKeySet << make_pair('b', uint256(0));
     pcursor->Seek(ssKeySet.str());
 
-    // Load mapBlockIndex
+    // Load ALL mapBlockIndex
     while (pcursor->Valid()) {
-
         boost::this_thread::interruption_point();
 
         try {
@@ -257,6 +256,7 @@ bool CBlockTreeDB::LoadBlockIndexGuts()
             return error("%s() : deserialize error", __PRETTY_FUNCTION__);
         }
     }
+
     delete pcursor;
 
     return true;

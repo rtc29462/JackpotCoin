@@ -5,14 +5,13 @@
 #ifndef BITCOIN_SYNC_H
 #define BITCOIN_SYNC_H
 
-#include "threadsafety.h"
+#define DEBUG_LOCKCONTENTION  true
 
-#include <boost/thread/condition_variable.hpp>
-#include <boost/thread/locks.hpp>
 #include <boost/thread/mutex.hpp>
 #include <boost/thread/recursive_mutex.hpp>
-
-
+#include <boost/thread/locks.hpp>
+#include <boost/thread/condition_variable.hpp>
+#include "threadsafety.h"
 
 ////////////////////////////////////////////////
 //                                            //

@@ -33,7 +33,7 @@ inline uint256 HashSHA3V3(char * input) {
     uint512 hash;
 
     sph_keccak512_init(&ctx_keccak);
-    sph_keccak512 (&ctx_keccak, input, 80 + 16);
+    sph_keccak512 (&ctx_keccak, input, 80+16);
     sph_keccak512_close(&ctx_keccak, (&hash));
 
     unsigned int round;
@@ -144,7 +144,7 @@ inline uint256 HashSHA3V1(char * input) {
     unsigned int round_max  = hash.Get32(0) & 0x00000007;
 
     if (fDebugHash) {
-       printf("Hash SHA3    : %s   \n", hash.GetHex().c_str());
+       printf("Hash SHA3 : %s   \n", hash.GetHex().c_str());
        printf("Rounds    : %.8x \n", round_max);
     }
 
@@ -201,11 +201,11 @@ inline uint256 HashSHA3(const T1 pbegin, const unsigned int option) {
 
     switch (option & 0x000000ff) {
       case 7:
-           return HashSHA3V1(ptr);
+       return HashSHA3V1(ptr);
       case 8:
-           return HashSHA3V2(ptr);
+       return HashSHA3V2(ptr);
       case 10:
-           return HashSHA3V3(ptr);
+       return HashSHA3V3(ptr);
     }
     return HashSHA3V3POS(ptr);
 

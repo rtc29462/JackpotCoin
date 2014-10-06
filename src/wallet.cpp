@@ -544,12 +544,6 @@ bool CWallet::AddToWalletIfInvolvingMe(const uint256 &hash, const CTransaction& 
 }
 
 
-bool CWallet::AddToWalletIfInvolvingMe(const CTransaction& tx, const CBlock* pblock, bool fUpdate)
-{
-    return AddToWalletIfInvolvingMe(tx.GetHash(), tx, pblock, fUpdate);
-}
-
-
 bool CWallet::EraseFromWallet(uint256 hash)
 {
     if (!fFileBacked)
@@ -578,7 +572,6 @@ bool CWallet::IsMine(const CTxIn &txin) const
     }
     return false;
 }
-
 
 int64 CWallet::GetDebit(const CTxIn &txin) const
 {
@@ -663,7 +656,6 @@ int CWalletTx::GetRequestCount() const
     }
     return nRequests;
 }
-
 
 void CWalletTx::GetAmounts(list<pair<CTxDestination, int64> >& listReceived,
                            list<pair<CTxDestination, int64> >& listSent, int64& nFee, string& strSentAccount) const
@@ -821,7 +813,6 @@ void CWalletTx::AddSupportingTransactions()
     reverse(vtxPrev.begin(), vtxPrev.end());
 }
 
-
 bool CWalletTx::WriteToDisk()
 {
     return CWalletDB(pwallet->strWalletFile).WriteTx(GetHash(), *this);
@@ -843,7 +834,7 @@ int CWallet::ScanForWalletTransactions(CBlockIndex* pindexStart, bool fUpdate)
             block.ReadFromDisk(pindex);
             BOOST_FOREACH (CTransaction& tx, block.vtx)
             {
-                if (AddToWalletIfInvolvingMe(tx, &block, fUpdate))
+                if (AddToWalletIfInvolvingMe(tx.GetHash(), tx, &block, fUpdate))
                     ret++;
             }
             pindex = pindex->pnext;
@@ -851,7 +842,6 @@ int CWallet::ScanForWalletTransactions(CBlockIndex* pindexStart, bool fUpdate)
     }
     return ret;
 }
-
 
 void CWallet::ReacceptWalletTransactions()
 {
@@ -907,7 +897,6 @@ void CWallet::ReacceptWalletTransactions()
     }
 }
 
-
 void CWalletTx::RelayWalletTransaction()
 {
     BOOST_FOREACH (const CMerkleTx& tx, vtxPrev)
@@ -928,7 +917,6 @@ void CWalletTx::RelayWalletTransaction()
         }
     }
 }
-
 
 void CWallet::ResendWalletTransactions()
 {
@@ -1372,8 +1360,9 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, int64> >& vecSend,
                     }
 
                     // Insert change txn at random position:
-                    vector<CTxOut>::iterator position = wtxNew.vout.begin() + GetRandInt(wtxNew.vout.size());
-                    wtxNew.vout.insert(position, CTxOut(nChange, scriptChange));
+                    CTxOut newTxOut(nChange, scriptChange);
+                    vector<CTxOut>::iterator position = wtxNew.vout.begin()+GetRandInt(wtxNew.vout.size()+1);
+                    wtxNew.vout.insert(position, newTxOut);
                 }
                 else
                 {
@@ -1481,12 +1470,12 @@ bool CWallet::GetStakeWeight(const CKeyStore& keystore, uint64& nMinWeight, uint
 // Create coin stake transaction
 bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int64 nSearchInterval, CTransaction& txNew, unsigned int& nBet)
 {
-
+    //
     // Coin Split Transaction Limit 
-    // = Forced split age                : 2 day
-    // = None split age                  : 7 days
-    // = None split coin number          : Initial block size of PoW
-    // = None split coin base on balance : 1/64 
+    //   = Forced split age                : 2 day
+    //   = None split age                  : 7 days
+    //   = None split coin number          : Initial block size of PoW
+    //   = None split coin base on balance : 1/64 
     //
     static unsigned int nStakeSplitAge       = (7 * 24 * 60 * 60); 
     static unsigned int nStakeSplitAgeForced = (2 * 24 * 60 * 60);

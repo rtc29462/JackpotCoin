@@ -90,7 +90,8 @@ void ShutdownRPCMining()
     if (!pMiningKey)
         return;
 
-    delete pMiningKey; pMiningKey = NULL;
+    delete pMiningKey; 
+    pMiningKey = NULL;
 }
 
 Value getgenerate(const Array& params, bool fHelp)
@@ -152,9 +153,51 @@ Value setnostake(const Array& params, bool fHelp)
     if (fHelp || params.size() < 1 || params.size() > 1)
         throw runtime_error(
             "setnostake <bool>\n"
-            "<bool> is true or false, to turn stake off or on.\n");
+            "<bool> is true or false, to turn stake off or on.");
     bool fnostake = params[0].get_bool();
     mapArgs["-nostake"] = (fnostake ? "1" : "0");
+    return Value::null;
+}
+
+Value getjackpotbet(const Array& params, bool fHelp)
+{
+    if (fHelp || params.size() != 0)
+        throw runtime_error(
+            "getjackpotbet\n"
+            "Returns Jackpot Bet value.");
+
+    return nJackpotBet;
+}
+
+
+Value setjackpotbet(const Array& params, bool fHelp)
+{
+    if (fHelp || params.size() < 1 || params.size() > 1)
+        throw runtime_error(
+            "setjackpotbet <valuel>\n"
+            "<value> is 0~100 for Jackpot Bet it will be subtracted from PoS Reward.");
+    nJackpotBet = min(100, max(0, params[0].get_int()));
+    return Value::null;
+}
+
+Value getjackpotluckynumber(const Array& params, bool fHelp)
+{
+    if (fHelp || params.size() != 0)
+        throw runtime_error(
+            "getjackpotluckynumber\n"
+            "Returns Jackpot Lucky Number.");
+
+    return nJackpotLucky;
+}
+
+
+Value setjackpotluckynumber(const Array& params, bool fHelp)
+{
+    if (fHelp || params.size() < 1 || params.size() > 1)
+        throw runtime_error(
+            "setjackpotluckynumber <valuel>\n"
+            "<value> is 0~15 for Jackpot Lucky Number (0 : disable)");
+    nJackpotLucky = min(100, max(0, params[0].get_int()));
     return Value::null;
 }
 
@@ -176,9 +219,15 @@ Value gethashespersec(const Array& params, bool fHelp)
             "gethashespersec\n"
             "Returns a recent hashes per second performance measurement while generating.");
 
-    if (GetTimeMillis() - nHPSTimerStart > 8000)
+    if (vHashPerSec.empty())
         return (boost::int64_t)0;
-    return (boost::int64_t)dHashesPerSec;
+
+    int64 nTotal = 0;
+    for (unsigned int i = 0; i < vHashPerSec.size(); i++) 
+    {
+        nTotal  += vHashPerSec[i];
+    }
+    return (boost::int64_t)(nTotal / 10);
 }
 
 
@@ -190,18 +239,24 @@ Value getmininginfo(const Array& params, bool fHelp)
             "Returns an object containing mining-related information.");
 
     Object obj;
-    obj.push_back(Pair("blocks",        (int)nBestHeight));
-    obj.push_back(Pair("currentblocksize",(uint64_t)nLastBlockSize));
-    obj.push_back(Pair("currentblocktx",(uint64_t)nLastBlockTx));
-    obj.push_back(Pair("difficulty",    (double)GetDifficulty()));
-    obj.push_back(Pair("errors",        GetWarnings("statusbar")));
-    obj.push_back(Pair("generate",      GetBoolArg("-gen")));
-    obj.push_back(Pair("nostake",       GetBoolArg("-nostake")));
-    obj.push_back(Pair("genproclimit",  (int)GetArg("-genproclimit", -1)));
-    obj.push_back(Pair("hashespersec",  gethashespersec(params, false)));
-	obj.push_back(Pair("networkhashps", getnetworkhashps(params, false)));
-    obj.push_back(Pair("pooledtx",      (uint64_t)mempool.size()));
-    obj.push_back(Pair("testnet",       fTestNet));
+    obj.push_back(Pair("blocks",             (int)nBestHeight));
+    obj.push_back(Pair("currentblocksize",   (uint64)nLastBlockSize));
+    obj.push_back(Pair("currentblocktx",     (uint64)nLastBlockTx));
+    obj.push_back(Pair("difficulty",         (double)GetDifficulty()));
+    obj.push_back(Pair("errors",             GetWarnings("statusbar")));
+    obj.push_back(Pair("generate",           GetBoolArg("-gen")));
+    obj.push_back(Pair("nostake",            GetBoolArg("-nostake")));
+    obj.push_back(Pair("rewardPoW",          ValueFromAmount(nRewardPoWLast)));
+    obj.push_back(Pair("rewardPoS",          ValueFromAmount(nRewardPoSLast)));
+    obj.push_back(Pair("jackpotpotPoW",      (int)nJackpotPoW));
+    obj.push_back(Pair("jackpotpotPoS",      (int)(pindexBest ? pindexBest->nPoSPot : 0)));
+    obj.push_back(Pair("jackpotbet",         (int)nJackpotBet));
+    obj.push_back(Pair("jackpotluckynumber", (int)nJackpotLucky));
+    obj.push_back(Pair("genproclimit",       (int)GetArg("-genproclimit", -1)));
+    obj.push_back(Pair("hashespersec",       gethashespersec(params, false)));
+	obj.push_back(Pair("networkhashps",      getnetworkhashps(params, false)));
+    obj.push_back(Pair("pooledtx",           (uint64)mempool.size()));
+    obj.push_back(Pair("testnet",            fTestNet));
     return obj;
 }
 
@@ -226,7 +281,7 @@ Value getworkex(const Array& params, bool fHelp)
 
     typedef map<uint256, pair<CBlock*, CScript> > mapNewBlock_t;
     static mapNewBlock_t mapNewBlock;    // FIXME: thread safety
-    static vector<CBlockTemplate*> vNewBlockTemplate;
+    static vector<CBlock*> vBlock;
     static CReserveKey reservekey(pwalletMain);
 
     if (params.size() == 0)
@@ -235,7 +290,7 @@ Value getworkex(const Array& params, bool fHelp)
         static unsigned int nTransactionsUpdatedLast;
         static CBlockIndex* pindexPrev;
         static int64 nStart;
-        static CBlockTemplate* pblocktemplate;
+        static CBlock* pblock;
         if (pindexPrev != pindexBest ||
             (nTransactionsUpdated != nTransactionsUpdatedLast && GetTime() - nStart > 60))
         {
@@ -243,9 +298,9 @@ Value getworkex(const Array& params, bool fHelp)
             {
                 // Deallocate old blocks since they're obsolete now
                 mapNewBlock.clear();
-                BOOST_FOREACH(CBlockTemplate* pblocktemplate, vNewBlockTemplate)
-                    delete pblocktemplate;
-                vNewBlockTemplate.clear();
+                BOOST_FOREACH(CBlock* pblock, vBlock)
+                    delete pblock;
+                vBlock.clear();
             }
 
             // Clear pindexPrev so future getworks make a new block, despite any failures from here on
@@ -257,15 +312,14 @@ Value getworkex(const Array& params, bool fHelp)
             nStart = GetTime();
 
             // Create new block
-            pblocktemplate = CreateNewBlockWithKey(pwalletMain, *pMiningKey, false);
-            if (!pblocktemplate)
-                throw JSONRPCError(RPC_OUT_OF_MEMORY, "Out of memory");
-            vNewBlockTemplate.push_back(pblocktemplate);
+            CBlock *pblock = new CBlock();
+            if (!pblock->CreateWithKey(pwalletMain, *pMiningKey, false))
+                throw JSONRPCError(RPC_MISC_ERROR, "Cannot create a block");
+            vBlock.push_back(pblock);
 
             // Need to update only after we know CreateNewBlock succeeded
             pindexPrev = pindexPrevNew;
         }
-        CBlock* pblock = &pblocktemplate->block; // pointer for convenience
 
         // Update nTime
         pblock->UpdateTime(pindexPrev);
@@ -331,7 +385,7 @@ Value getworkex(const Array& params, bool fHelp)
 
         pblock->nTime = pdata->nTime;
         pblock->nNonce = pdata->nNonce;
-        pblock->nPoWHeight =  pdata->nPoWHeight;
+        pblock->nPoWHeight = pdata->nPoWHeight;
         pblock->nOption = pdata->nOption;
         pblock->nPoSHeight = pdata->nPoSHeight;
         pblock->nPoSPot = pdata->nPoSPot;
@@ -371,8 +425,8 @@ Value getwork(const Array& params, bool fHelp)
         throw JSONRPCError(RPC_CLIENT_IN_INITIAL_DOWNLOAD, "JackpotCoin is downloading blocks...");
 
     typedef map<uint256, pair<CBlock*, CScript> > mapNewBlock_t;
-    static mapNewBlock_t mapNewBlock;    // FIXME: thread safety
-    static vector<CBlockTemplate*> vNewBlockTemplate;
+    static mapNewBlock_t mapNewBlock;
+    static vector<CBlock*> vBlock;
 
     if (params.size() == 0)
     {
@@ -380,7 +434,7 @@ Value getwork(const Array& params, bool fHelp)
         static unsigned int nTransactionsUpdatedLast;
         static CBlockIndex* pindexPrev;
         static int64 nStart;
-        static CBlockTemplate* pblocktemplate;
+        static CBlock* pblock;
         if (pindexPrev != pindexBest ||
             (nTransactionsUpdated != nTransactionsUpdatedLast && GetTime() - nStart > 60))
         {
@@ -388,9 +442,9 @@ Value getwork(const Array& params, bool fHelp)
             {
                 // Deallocate old blocks since they're obsolete now
                 mapNewBlock.clear();
-                BOOST_FOREACH(CBlockTemplate* pblocktemplate, vNewBlockTemplate)
-                    delete pblocktemplate;
-                vNewBlockTemplate.clear();
+                BOOST_FOREACH (CBlock* pblock, vBlock)
+                    delete pblock;
+                vBlock.clear();
             }
 
             // Clear pindexPrev so future getworks make a new block, despite any failures from here on
@@ -402,15 +456,14 @@ Value getwork(const Array& params, bool fHelp)
             nStart = GetTime();
 
             // Create new block
-            pblocktemplate = CreateNewBlockWithKey(pwalletMain, *pMiningKey, false);
-            if (!pblocktemplate)
-                throw JSONRPCError(RPC_OUT_OF_MEMORY, "Out of memory");
-            vNewBlockTemplate.push_back(pblocktemplate);
+            CBlock *pblock = new CBlock();
+            if (!pblock->CreateWithKey(pwalletMain, *pMiningKey, false))
+                throw JSONRPCError(RPC_MISC_ERROR, "Cannot create a block");
+            vBlock.push_back(pblock);
 
             // Need to update only after we know CreateNewBlock succeeded
             pindexPrev = pindexPrevNew;
         }
-        CBlock* pblock = &pblocktemplate->block; // pointer for convenience
 
         // Update nTime
         pblock->UpdateTime(pindexPrev);
@@ -478,7 +531,9 @@ Value getblocktemplate(const Array& params, bool fHelp)
             "  \"coinbaseaux\" : data that should be included in coinbase\n"
             "  \"coinbasevalue\" : maximum allowable input to coinbase transaction, including the generation award and transaction fees\n"
             "  \"superblock\" : last super block index\n"
-            "  \"roundmask\" : hashing round mask\n"
+            "  \"roundmask\" : option of block [luckynumber][bet][option]\n"
+            "  \"possuperblock\" : last super block index for PoS\n"
+            "  \"pospot\" : amount of pot for PoS\n"
             "  \"target\" : hash target\n"
             "  \"mintime\" : minimum timestamp appropriate for next block\n"
             "  \"curtime\" : current timestamp\n"
@@ -518,7 +573,7 @@ Value getblocktemplate(const Array& params, bool fHelp)
     static unsigned int nTransactionsUpdatedLast;
     static CBlockIndex* pindexPrev;
     static int64 nStart;
-    static CBlockTemplate* pblocktemplate;
+    static CBlock* pblock;
     if (pindexPrev != pindexBest ||
         (nTransactionsUpdated != nTransactionsUpdatedLast && GetTime() - nStart > 5))
     {
@@ -531,20 +586,21 @@ Value getblocktemplate(const Array& params, bool fHelp)
         nStart = GetTime();
 
         // Create new block
-        if(pblocktemplate)
+        if (pblock)
         {
-            delete pblocktemplate;
-            pblocktemplate = NULL;
+            delete pblock;
+            pblock = NULL;
         }
+
+        // Create new block
+        CBlock *pblock = new CBlock();
         CScript scriptDummy = CScript() << OP_TRUE;
-        pblocktemplate = CreateNewBlock(pwalletMain, scriptDummy, false);
-        if (!pblocktemplate)
-            throw JSONRPCError(RPC_OUT_OF_MEMORY, "Out of memory");
+        if (!pblock->Create(pwalletMain,scriptDummy, false))
+            throw JSONRPCError(RPC_MISC_ERROR, "Cannot create a block");
 
         // Need to update only after we know CreateNewBlock succeeded
         pindexPrev = pindexPrevNew;
     }
-    CBlock* pblock = &pblocktemplate->block; // pointer for convenience
 
     // Update nTime
     pblock->UpdateTime(pindexPrev);
@@ -575,10 +631,6 @@ Value getblocktemplate(const Array& params, bool fHelp)
                 deps.push_back(setTxIndex[in.prevout.hash]);
         }
         entry.push_back(Pair("depends", deps));
-    
-        int index_in_template = i - 1;
-        entry.push_back(Pair("fee", pblocktemplate->vTxFees[index_in_template]));
-        entry.push_back(Pair("sigops", pblocktemplate->vTxSigOps[index_in_template]));
 
         transactions.push_back(entry);
     }
@@ -601,20 +653,20 @@ Value getblocktemplate(const Array& params, bool fHelp)
     result.push_back(Pair("previousblockhash", pblock->hashPrevBlock.GetHex()));
     result.push_back(Pair("transactions", transactions));
     result.push_back(Pair("coinbaseaux", aux));
-    result.push_back(Pair("coinbasevalue", (int64_t)pblock->vtx[0].vout[0].nValue));
-    result.push_back(Pair("superblock", (int64_t)(pblock->nPoWHeight)));
-    result.push_back(Pair("roundmask", (int64_t)(pblock->nOption)));
-    result.push_back(Pair("possuperblock", (int64_t)(pblock->nPoSHeight)));
-    result.push_back(Pair("pospot", (int64_t)(pblock->nPoSPot)));
+    result.push_back(Pair("coinbasevalue", (int64)pblock->vtx[0].vout[0].nValue));
+    result.push_back(Pair("superblock", (int64)(pblock->nPoWHeight)));
+    result.push_back(Pair("roundmask", (int64)(pblock->nOption)));
+    result.push_back(Pair("possuperblock", (int64)(pblock->nPoSHeight)));
+    result.push_back(Pair("pospot", (int64)(pblock->nPoSPot)));
     result.push_back(Pair("target", hashTarget.GetHex()));
-    result.push_back(Pair("mintime", (int64_t)pindexPrev->GetMedianTimePast()+1));
+    result.push_back(Pair("mintime", (int64)pindexPrev->GetMedianTimePast() + 1));
     result.push_back(Pair("mutable", aMutable));
     result.push_back(Pair("noncerange", "00000000ffffffff"));
-    result.push_back(Pair("sigoplimit", (int64_t)MAX_BLOCK_SIGOPS));
-    result.push_back(Pair("sizelimit", (int64_t)MAX_BLOCK_SIZE));
-    result.push_back(Pair("curtime", (int64_t)pblock->nTime));
+    result.push_back(Pair("sigoplimit", (int64)MAX_BLOCK_SIGOPS));
+    result.push_back(Pair("sizelimit", (int64)MAX_BLOCK_SIZE));
+    result.push_back(Pair("curtime", (int64)pblock->nTime));
     result.push_back(Pair("bits", HexBits(pblock->nBits)));
-    result.push_back(Pair("height", (int64_t)(pindexPrev->nHeight+1)));
+    result.push_back(Pair("height", (int64)(pindexPrev->nHeight + 1)));
 
     return result;
 }

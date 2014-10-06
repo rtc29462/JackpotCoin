@@ -31,12 +31,18 @@ std::string HelpRequiringPassphrase()
 void EnsureWalletIsUnlocked()
 {
 
+    if (pwalletMain)
+    { 
     if (pwalletMain->IsLocked())
         throw JSONRPCError(RPC_WALLET_UNLOCK_NEEDED, "Error: Please enter the wallet passphrase with walletpassphrase first.");
 
     if (pwalletMain->IsCrypted() && fWalletUnlockMintOnly)
         throw JSONRPCError(RPC_WALLET_UNLOCK_NEEDED, "Error: Wallet is unlocked for block minting only.");
-
+    }
+    else 
+    {
+        throw JSONRPCError(RPC_WALLET_ERROR, "Error: Wallet has been disabled.");
+    }
 }
 
 void WalletTxToJSON(const CWalletTx& wtx, Object& entry)
@@ -77,7 +83,7 @@ Value getinfo(const Array& params, bool fHelp)
     proxyType proxy;
     GetProxy(NET_IPV4, proxy);
 
-    Object obj, diff;
+    Object obj;
     obj.push_back(Pair("version",          (int)CLIENT_VERSION));
     obj.push_back(Pair("protocolversion",  (int)PROTOCOL_VERSION));
     if (pwalletMain) {
@@ -92,6 +98,7 @@ Value getinfo(const Array& params, bool fHelp)
     obj.push_back(Pair("connections",       (int)vNodes.size()));
     obj.push_back(Pair("proxy",             (proxy.first.IsValid() ? proxy.first.ToStringIPPort() : string())));
 
+    Object diff;
     diff.push_back(Pair("proof-of-work",    GetDifficulty()));
     diff.push_back(Pair("proof-of-stake",   GetDifficulty(GetLastBlockIndex(pindexBest, true))));
     obj.push_back(Pair("difficulty",        diff));
@@ -130,7 +137,7 @@ Value getnewaddress(const Array& params, bool fHelp)
 
     // Generate a new key that is added to wallet
     CPubKey newKey;
-    if (!pwalletMain->GetKeyFromPool(newKey, false))
+    if (pwalletMain && !pwalletMain->GetKeyFromPool(newKey, false))
         throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: Keypool ran out, please call keypoolrefill first");
     CKeyID keyID = newKey.GetID();
 

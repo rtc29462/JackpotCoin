@@ -264,12 +264,16 @@ static const CRPCCommand vRPCCommands[] =
     { "getnormalizedtxid",      &getnormalizedtxid,      true,   true,    false },
     { "gettxoutsetinfo",        &gettxoutsetinfo,        true,   false,   false },
     { "gettxout",               &gettxout,               true,   false,   false },
-    { "lockunspent",            &lockunspent,            false,  false,   true },
-    { "listlockunspent",        &listlockunspent,        false,  false,   true },
+    { "lockunspent",            &lockunspent,            false,  false,   true  },
+    { "listlockunspent",        &listlockunspent,        false,  false,   true  },
     { "verifychain",            &verifychain,            true,   false,   false },
     { "reservebalance",         &reservebalance,         false,  true,    false },
     { "getnostake",             &getnostake,             true,   false,   false },
     { "setnostake",             &setnostake,             true,   false,   true  },
+    { "getjackpotbet",          &getjackpotbet,          true,   false,   false },
+    { "setjackpotbet",          &setjackpotbet,          true,   false,   false },
+    { "getjackpotluckynumber",  &getjackpotluckynumber,  true,   false,   false },
+    { "setjackpotluckynumber",  &setjackpotluckynumber,  true,   false,   false },
     { "getcurrentjackpot",      &getcurrentjackpot,      true,   false,   false },
 };
 
@@ -1181,6 +1185,8 @@ Array RPCConvertValues(const std::string &strMethod, const std::vector<std::stri
     if (strMethod == "setgenerate"            && n > 0) ConvertTo<bool>(params[0]);
     if (strMethod == "setgenerate"            && n > 1) ConvertTo<boost::int64_t>(params[1]);
     if (strMethod == "setnostake"             && n > 0) ConvertTo<bool>(params[0]);
+    if (strMethod == "setjackpotbet"          && n > 0) ConvertTo<int>(params[0]);
+    if (strMethod == "setjackpotluckynumber"  && n > 0) ConvertTo<int>(params[0]);
     if (strMethod == "getnetworkhashps"       && n > 0) ConvertTo<boost::int64_t>(params[0]);
     if (strMethod == "getnetworkhashps"       && n > 1) ConvertTo<boost::int64_t>(params[1]);
     if (strMethod == "sendtoaddress"          && n > 1) ConvertTo<double>(params[1]);

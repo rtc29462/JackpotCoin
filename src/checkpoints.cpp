@@ -35,6 +35,9 @@ namespace Checkpoints
         (500001, uint256("0x49b3e63d4f092c6bab8dc938fe3ba6b0316d866dc3e6f3331c0ff29640f8ed54"))
         (550001, uint256("0x65cba891ff6ffd4b6ac3955b1ee722f321dc77567fdd190f6a415998e7f2cf04"))
         (600001, uint256("0xacd60c624540af2e1b03c98b021cbd7ec1802b3fffe25a349130a7b95fb09ed6"))
+        (700001, uint256("0xe21e3baf02626294097ed870d41d060ad5b9a286e5418365ff0f879f8440f769"))
+        (800001, uint256("0x0000000000770eeaa628e9fac8acc4f62c7697daa46ba959345e157cb6cbc88a"))
+        (850001, uint256("0x60b09745de56e8ced1e9aa858e39ab435e848fd30d29252072904b1394ee0286"))
         ;
 
     static MapCheckpoints mapCheckpointsTestnet =
@@ -75,7 +78,7 @@ namespace Checkpoints
     {
         MapCheckpoints& checkpoints = (fTestNet ? mapCheckpointsTestnet : mapCheckpoints);
 
-        BOOST_REVERSE_FOREACH(const MapCheckpoints::value_type& i, checkpoints)
+        BOOST_REVERSE_FOREACH (const MapCheckpoints::value_type& i, checkpoints)
         {
             const uint256& hash = i.second;
             std::map<uint256, CBlockIndex*>::const_iterator t = mapBlockIndex.find(hash);
